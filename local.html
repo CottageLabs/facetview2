@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>FacetView</title>
+
+  <script type="text/javascript" src="vendor/jquery/1.7.1/jquery-1.7.1.min.js"></script>
+
+  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+  <script type="text/javascript" src="vendor/bootstrap/js/bootstrap.min.js"></script>  
+
+  <script type="text/javascript" src="vendor/linkify/1.0/jquery.linkify-1.0-min.js"></script>  
+  
+  <link rel="stylesheet" href="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.css">
+  <script type="text/javascript" src="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.min.js"></script>
+
+  <script type="text/javascript" src="jquery.facetview2.js"></script>
+
+  <link rel="stylesheet" href="css/facetview.css">
+
+  <script type="text/javascript">
+jQuery(document).ready(function($) {
+    $('.facet-view-simple').each(function() {
+        $(this).facetview({
+            page_size: 15,
+            sort: [{"title.exact" : {"order" : "asc"}}],
+            searchfield: "isbn",
+            q : "Money",
+            facets: [
+                {'field': 'price', 'display': 'Price', "type" : "range"},
+                {'field': 'subject.exact', 'display': 'Subject', "logic" : "OR"},
+                {'field': 'condition.exact', 'display': 'Condition', "logic" : "AND"},
+                {'field': 'year', 'display': 'Publication Year', "size" : 26},
+                {'field': 'edition.exact', 'display': 'Edition', "order" : "reverse_count"}
+            ],
+            default_facet_size: 11,
+            default_facet_operator: "AND",
+            default_facet_order: "term",
+            from: 0,
+            search_sortby: [
+                {'display':'Date added','field':'created_date'},
+                {'display':'Title','field':'title.exact'},
+                {'display':'Publication Year','field':'year'},
+                {'display':'Edition','field':'edition.exact'},
+                {'display':'Price','field':'price'}
+            ],
+            searchbox_fieldselect: [
+                {'display':'Title','field':'title'},
+                {'display':'ISBN','field':'isbn'},
+                {'display':'Authors','field':'authors'},
+                {'display':'Publisher','field':'publisher'}
+            ],
+            sharesave_link: true
+        });
+    });
+});
+  </script>
+
+<style type="text/css">
+.facet-view-simple{
+    width:1170px;
+    height:600px;
+    margin:20px auto 0 auto;
+}
+</style>
+
+</head>
+<body>
+
+    <div class="facet-view-simple"></div>
+
+</body>
+</html>
