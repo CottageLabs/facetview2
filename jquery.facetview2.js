@@ -135,6 +135,7 @@ function theFacetview(options) {
      * id : facetview_selectedfilters - where we summarise the filters which have been selected
      * class: facetview_metadata - where we want paging to go
      * id: facetview_results - the table id for where the results actually go
+     * id: facetview_searching - where the loading notification can go
      */
 
     // the facet view object to be appended to the page
@@ -156,6 +157,12 @@ function theFacetview(options) {
     
     // make space at the top for the pager
     thefacetview += '<div class="facetview_metadata" style="margin-top:20px;"></div>';
+    
+    // insert loading notification
+    thefacetview += '<div class="facetview_searching" style="display:none"></div>'
+    
+    // insert loading notification
+    thefacetview += '<div class="facetview_debug" style="display:none"></div>'
     
     // insert the table within which the results actually will go
     thefacetview += '<table class="table table-striped table-bordered" id="facetview_results"></table>'
@@ -298,15 +305,29 @@ function renderTermFacet(facet, options) {
     return filterTmpl
 }
 
+function searchingNotification(options) {
+    return "SEARCHING..."
+}
+
 /******************************************************************
- * DEFAULT CALLBACKS
+ * DEFAULT CALLBACKS AND PLUGINS
  *****************************************************************/
  
-function postInit(options) {}
-function preSearch(options) {}
-function postSearch(options) {}
-function preRender(options) {}
-function postRender(options) {}
+// the lifecycle callbacks
+function postInit(options, context) {}
+function preSearch(options, context) {}
+function postSearch(options, context) {}
+function preRender(options, context) {}
+function postRender(options, context) {}
+
+// behaviour functions
+function showSearchingNotification(options, context) {
+    $(".facetview_searching", context).show()
+}
+
+function hideSearchingNotification(options, context) {
+    $(".facetview_searching", context).hide()
+}
 
 /******************************************************************
  * URL MANAGEMENT
@@ -317,10 +338,213 @@ function shareableUrl(options) {
     return 'http://' + window.location.host + window.location.pathname + '?source=FIXME'
 }
 
+/******************************************************************
+ * ELASTICSEARCH INTEGRATION
+ *****************************************************************/
+
+function elasticSearchQuery(options) {
+    // the query object we will be building up
+    var qs = {"query" : {"bool" : {"must" : []}}};
+    
+    // read any filters out of the options
+    // FIXME: do this when we have done filter selection mechanics
+    
+    // read any pre-defined filters
+    // FIXME: do this when we have understood filter selection mechanics (above)
+    
+    // search string and search field
+    var querystring = options.q
+    var searchfield = options.searchfield
+    var ftq = undefined
+    
+    if (querystring) {
+        ftq = {'query_string' : { 'query': fuzzify(querystring, options.default_freetext_fuzzify) }};
+        if (searchfield) {
+            ftq.query_string["default_field"] = searchfield
+        }
+    } else {
+        ftq = {"match_all" : {}}
+    }
+    qs.query.bool.must.push(ftq)
+    
+    // sort order and direction
+    options.sort.length > 0 ? qs['sort'] = options.sort : "";
+    
+    // fields and partial fields
+    options.fields ? qs['fields'] = options.fields : "";
+    options.partial_fields ? qs['partial_fields'] = options.partial_fields : "";
+    
+    // paging (number of results, and start cursor)
+    if (options.from) {
+        qs["from"] = options.from
+    }
+    if (options.page_size) {
+        qs["size"] = options.page_size
+    }
+    
+    // facets
+    qs['facets'] = {};
+    for (var item = 0; item < options.facets.length; item++) {
+        var defn = options.facets[item]
+        var type = "terms"
+        if ("type" in defn) {
+            type = defn["type"]
+        }
+        var size = options.default_facet_size
+        if ("size" in defn) {
+            size = defn["size"]
+        }
+        size += options.elasticsearch_facet_inflation // add a bunch of extra values to the facets to deal with the shard count issue
+        
+        var facet = {}
+        if (type === "terms") {
+            facet["terms"] = {"field" : defn["field"], "size" : size}
+            qs["facets"][defn["field"]] = facet
+        }
+    }
+    
+    // and any extra facets
+    // FIXME: this does not include any treatment of the facet size inflation that may be required
+    jQuery.extend(true, qs['facets'], options.extra_facets );
+    
+    return qs
+    
+    var bool = options.bool ? options.bool : false
+    var nested = false;
+    var seenor = []; // track when an or group are found and processed
+    $('.facetview_filterselected',obj).each(function() {
+        // FIXME: this will overwrite any existing bool in the options
+        !bool ? bool = {'must': [] } : "";
+        if ( $(this).hasClass('facetview_facetrange') ) {
+            var rngs = {
+                'from': $('.facetview_lowrangeval_' + $(this).attr('rel'), this).html(),
+                'to': $('.facetview_highrangeval_' + $(this).attr('rel'), this).html()
+            };
+            var rel = options.facets[ $(this).attr('rel') ]['field'];
+            var robj = {'range': {}};
+            robj['range'][ rel ] = rngs;
+            // check if this should be a nested query
+            var parts = rel.split('.');
+            if ( options.nested.indexOf(parts[0]) != -1 ) {
+                !nested ? nested = {"nested":{"_scope":parts[0],"path":parts[0],"query":{"bool":{"must":[robj]}}}} : nested.nested.query.bool.must.push(robj);
+            } else {
+                bool['must'].push(robj);
+            }
+        } else {
+            // TODO: check if this has class facetview_logic_or
+            // if so, need to build a should around it and its siblings
+            if ( $(this).hasClass('facetview_logic_or') ) {
+                if ( $.inArray($(this).attr("rel"), seenor) === -1 ) {
+                // if ( !($(this).attr('rel') in seenor) ) {
+                    seenor.push($(this).attr('rel'));
+                    var bobj = {'bool':{'should':[]}};
+                    $('.facetview_filterselected[rel="' + $(this).attr('rel') + '"]').each(function() {
+                        if ( $(this).hasClass('facetview_logic_or') ) {
+                            var ob = {'term':{}};
+                            ob['term'][ $(this).attr('rel') ] = $(this).attr('href');
+                            bobj.bool.should.push(ob);
+                        };
+                    });
+                    // FIXME: this is a bit counter intuitive, may want to take it out
+                    //if ( bobj.bool.should.length == 1 ) {
+                    //    var spacer = {'match_all':{}};
+                    //    bobj.bool.should.push(spacer);
+                    //}
+                }
+            } else {
+                var bobj = {'term':{}};
+                bobj['term'][ $(this).attr('rel') ] = $(this).attr('href');
+            }
+            
+            // check if this should be a nested query
+            if (bobj) {
+                var parts = $(this).attr('rel').split('.');
+                if ( options.nested.indexOf(parts[0]) != -1 ) {
+                    !nested ? nested = {"nested":{"_scope":parts[0],"path":parts[0],"query":{"bool":{"must":[bobj]}}}} : nested.nested.query.bool.must.push(bobj);
+                } else {
+                    bool['must'].push(bobj);
+                }
+            }
+        }
+    });
+    for (var item in options.predefined_filters) {
+        // FIXME: this may overwrite existing bool option
+        !bool ? bool = {'must': [] } : "";
+        var pobj = options.predefined_filters[item];
+        var parts = item.split('.');
+        if ( options.nested.indexOf(parts[0]) != -1 ) {
+            !nested ? nested = {"nested":{"_scope":parts[0],"path":parts[0],"query":{"bool":{"must":[pobj]}}}} : nested.nested.query.bool.must.push(pobj);
+        } else {
+            bool['must'].push(pobj);
+        }
+    }
+}
+
+function fuzzify(querystr, default_freetext_fuzzify) {
+    var rqs = querystr
+    if (default_freetext_fuzzify !== undefined) {
+        if (default_freetext_fuzzify == "*" || default_freetext_fuzzify == "~") {
+            if (querystr.indexOf('*') == -1 && querystr.indexOf('~') == -1 && querystr.indexOf(':') == -1) {
+                var optparts = querystr.split(' ');
+                pq = "";
+                for ( var oi = 0; oi < optparts.length; oi++ ) {
+                    var oip = optparts[oi];
+                    if ( oip.length > 0 ) {
+                        oip = oip + default_freetext_fuzzify;
+                        default_freetext_fuzzify == "*" ? oip = "*" + oip : false;
+                        pq += oip + " ";
+                    }
+                };
+                rqs = pq;
+            };
+        };
+    };
+    return rqs;
+};
 
 var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/'];
 
-// now the facetview function
+function jsonStringEscape(key, value) {
+    if (key == "query" && typeof(value) == 'string') {
+        for (var each = 0; each < elasticsearch_special_chars.length; each++) {
+            value = value.replace(elasticsearch_special_chars[each],'\\' + elasticsearch_special_chars[each], 'g');
+        }
+        return value;
+    }
+    return value;
+};
+
+function serialiseQueryObject(qs) {
+    return JSON.stringify(qs, jsonStringEscape);
+};
+
+function doElasticSearchQuery(params) {
+    var success_callback = params.success
+    var complete_callback = params.complete
+    var search_url = params.search_url
+    var queryobj = params.queryobj
+    var datatype = params.datatype
+    
+    var querystring = serialiseQueryObject(queryobj)
+    alert(querystring)
+    
+    
+    $.ajax({
+        type: "get",
+        url: search_url,
+        data: {source: querystring},
+        dataType: datatype,
+        success: success_callback,
+        complete: complete_callback
+    });
+}
+
+
+
+/******************************************************************
+ * FACETVIEW ITSELF
+ *****************************************************************/
+
 (function($){
     $.fn.facetview = function(options) {
     
@@ -330,8 +554,17 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
          
         // specify all the default options
         var defaults = {
+            // elasticsearch parameters
+            "search_url" : "http://localhost:9200/_search",
+            "datatype" : "jsonp",
+            "default_freetext_fuzzify": false,
+            "fields" : false,
+            "partial_fields" : false,
+            "elasticsearch_facet_inflation" : 100,
+            
             // view parameters
             "facets" : [],
+            "extra_facets": {},
             "page_size" : 10,
             "from" : 0,
             "search_sortby" : [],
@@ -344,22 +577,34 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
             "default_facet_operator" : "AND",
             "default_facet_order" : "count",
             
+            "predefined_filters" : [],
+            
             // behaviours
             "freetext_submit_delay" : 800,
             "initialsearch" : true,
+            "debug" : false,
             
             // render parameters
             "render_the_facetview" : theFacetview,
             "render_search_options" : searchOptions,
             "render_facet_list" : facetList,
             "render_term_facet" : renderTermFacet,
+            "render_searching_notification" : searchingNotification,
+            
+            // behaviour plugins
+            "behaviour_show_searching" : showSearchingNotification,
+            "behaviour_finished_searching" : hideSearchingNotification,
             
             // callbacks
             "post_init_callback" : postInit,
             "pre_search_callback" : preSearch,
             "post_search_callback" : postSearch,
             "pre_render_callback" : preRender,
-            "post_render_callback" : postRender
+            "post_render_callback" : postRender,
+            
+            // internal admin stuff (don't touch)
+            "searching" : false,
+            "queryobj" : false
         }
         
         // extend the defaults with the provided options
@@ -408,7 +653,30 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
                 setUIFacetAndOr({facet : f})
             }
         }
+        
+        function urlFromOptions() {
+            var currurl = shareableUrl(options)
+            if (options.pushstate && 'pushState' in window.history) {
+                
+                // FIXME: deal with this when we do url treatment properly
+                //if (url_options['facetview_url_anchor']) {
+                //    currurl += url_options['facetview_url_anchor'];
+                //}
+                
+                window.history.pushState("", "search", currurl);
+            }
+            
+            // FIXME: also do the share save url
+            if (options.sharesave_link) { $('.facetview_sharesaveurl', obj).val(currurl); }
+        }
+        
+        /******************************************************************
+         * DEBUG
+         *****************************************************************/
 
+        function addDebug(msg, context) {
+            $(".facetview_debug", context).append(msg + "<br><br>").show()
+        }
         
         /**************************************************************
          * functions for managing search option events
@@ -425,7 +693,7 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
                 options.page_size = parseInt(newhowmany);
                 options.from = 0;
                 setUIPageSize(options.page_size);
-                dosearch();
+                doSearch();
             }
         };
         
@@ -461,7 +729,7 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
             
             // reset the cursor and issue a search
             options.from = 0;
-            dosearch();
+            doSearch();
         }
         
         function changeOrderBy(event) {
@@ -472,7 +740,7 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
             
             // reset the cursor and issue a search
             options.from = 0;
-            dosearch();
+            doSearch();
         }
         
         // set the UI to present the given ordering
@@ -531,7 +799,7 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
             var field = $(this).val();
             options.from = 0;
             options.searchfield = field
-            dosearch();
+            doSearch();
         };
         
         // keyup in search box
@@ -539,7 +807,7 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
             event.preventDefault()
             var q = $(this).val()
             options.q = q
-            dosearch()
+            doSearch()
         }
         
         function setUISearchField(params) {
@@ -617,7 +885,7 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
                 morewhat['size'] = parseInt(newmore);
                 // $(this).html(newmore);
                 setUIFacetVals({facet: morewhat})
-                dosearch();
+                doSearch();
             }
         };
         
@@ -647,7 +915,7 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
             }
             sortwhat["order"] = cycle[sortwhat["order"]]
             setUIFacetSort({facet: sortwhat})
-            dosearch();
+            doSearch();
         };
         
         function setUIFacetSort(params) {
@@ -684,7 +952,7 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
             }
             orwhat["logic"] = cycle[orwhat["logic"]]
             setUIFacetAndOr({facet: orwhat})
-            dosearch();
+            doSearch();
         }
         
         function setUIFacetAndOr(params) {
@@ -711,8 +979,68 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
          * search handling
          *************************************************************/
         
-        function dosearch() {
+        function querySuccess(data) {
         
+        }
+        
+        function queryComplete(jqXHR, textStatus) {
+            options.searching = false;
+            options.behaviour_finished_searching(options, obj)
+        }
+        
+        function doSearch() {
+            // FIXME: does this have any weird side effects?
+            // if a search is currently going on, don't do anything
+            if (options.searching) {
+                // alert("already searching")
+                return
+            }
+            options.searching = true; // we are executing a search right now
+            
+            // if a pre search callback is provided, run it
+            options.pre_search_callback(options, obj);
+            
+            // trigger any searching notification behaviour
+            options.behaviour_show_searching(options, obj)
+            
+            // FIXME: I don't think we need this any more.  keyup on the
+            // search box syncs with the options
+            // update the options with the latest q value
+            //if ( options.searchbox_class.length == 0 ) {
+            //    options.q = $('.facetview_freetext', obj).val();
+            //} else {
+            //    options.q = $(options.searchbox_class).last().val();
+            //};
+            
+            // make the search query
+            var queryobj = elasticSearchQuery(options);
+            options.queryobj = queryobj
+            if (options.debug) {
+                var querystring = serialiseQueryObject(queryobj)
+                addDebug(querystring)
+            }
+            
+            // augment the URL bar if possible, and the share/save link
+            urlFromOptions()
+            
+            // issue the query to elasticsearch
+            doElasticSearchQuery({
+                search_url: options.search_url,
+                queryobj: queryobj,
+                datatype: options.datatype,
+                success: querySuccess,
+                complete: queryComplete
+            })
+            
+            //$.ajax({
+            //    type: "get",
+            //    url: options.search_url,
+            //    data: {source: qrystr},
+                // processData: false,
+            //    dataType: options.datatype,
+            //    success: showresults,
+            //    complete: not_searching
+            //});
         }
         
         /**************************************************************
@@ -723,6 +1051,7 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
         thefacetview = options.render_the_facetview(options)
         thesearchopts = options.render_search_options(options)
         thefacets = options.render_facet_list(options)
+        searching = options.render_searching_notification(options)
         
         
         // now create the plugin on the page for each div
@@ -742,6 +1071,11 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
                 // add the facets (empty at this stage)
                 if (thefacets != "") {
                     $('#facetview_filters', obj).html(thefacets);
+                }
+                
+                // add the loading notification
+                if (searching != "") {
+                    $(".facetview_searching", obj).html(searching)
                 }
                 
                 // populate all the page UI from the options
@@ -764,10 +1098,10 @@ var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/']
                 
                 // if a post initialisation callback is provided, run it
                 if (typeof options.post_init_callback === 'function') {
-                    options.post_init_callback(options);
+                    options.post_init_callback(options, obj);
                 }
                 
-                if (options.initialsearch) { dosearch() }
+                if (options.initialsearch) { doSearch() }
             };
             whenready();
         });

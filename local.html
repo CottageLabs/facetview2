@@ -22,9 +22,11 @@
 jQuery(document).ready(function($) {
     $('.facet-view-simple').each(function() {
         $(this).facetview({
+            search_url : "http://localhost:9200/uniboard/advert/_search",
+            datatype : "jsonp",
             page_size: 15,
             sort: [{"title.exact" : {"order" : "asc"}}],
-            searchfield: "isbn",
+            searchfield: "title",
             q : "Money",
             facets: [
                 {'field': 'price', 'display': 'Price', "type" : "range"},
@@ -50,7 +52,9 @@ jQuery(document).ready(function($) {
                 {'display':'Authors','field':'authors'},
                 {'display':'Publisher','field':'publisher'}
             ],
-            sharesave_link: true
+            sharesave_link: true,
+            debug: true,
+            fields: ["title", "authors"]
         });
     });
 });
