@@ -162,7 +162,7 @@ function theFacetview(options) {
     thefacetview += '<div class="facetview_searching" style="display:none"></div>'
     
     // insert loading notification
-    thefacetview += '<div class="facetview_debug" style="display:none"></div>'
+    thefacetview += '<div class="facetview_debug" style="display:none"><textarea style="width: 90%; height: 100px"></textarea></div>'
     
     // insert the table within which the results actually will go
     thefacetview += '<table class="table table-striped table-bordered" id="facetview_results"></table>'
@@ -281,8 +281,8 @@ function renderTermFacet(facet, options) {
      
     // full template for the facet - we'll then go on and do some find and replace
     var filterTmpl = '<table id="facetview_filter_{{FILTER_NAME}}" class="facetview_filters table table-bordered table-condensed table-striped"> \
-        <tr><td><a class="facetview_filtershow" title="filter by {{FILTER_DISPLAY}}" rel="{{FILTER_NAME}}" \
-        style="color:#333; font-weight:bold;" href=""><i class="icon-plus"></i> {{FILTER_DISPLAY}} \
+        <tr><td><a class="facetview_filtershow" title="filter by {{FILTER_DISPLAY}}" \
+        style="color:#333; font-weight:bold;" href="{{FILTER_EXACT}}"><i class="icon-plus"></i> {{FILTER_DISPLAY}} \
         </a> \
         <div class="btn-group facetview_filteroptions" style="display:none; margin-top:5px;"> \
             <a class="btn btn-small facetview_morefacetvals" id="facetview_facetvals_{{FILTER_NAME}}" title="filter list size" href="{{FILTER_EXACT}}">0</a> \
@@ -303,6 +303,19 @@ function renderTermFacet(facet, options) {
     };
     
     return filterTmpl
+}
+
+function renderFacetResult(facet, result) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * class: facetview_filtervalue - tags the top level element as being a facet result
+     * class: facetview_filterchoice - tags the anchor wrapped around the name of the field
+     */
+    var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
+                '" rel="' + facet['field'] + '" href="' + result.term + '"><span class="facetview_filterchoice_text">' + result.term + '</span>' +
+                '<span class="facetview_filterchoice_count"> (' + result.count + ')</span></a></td></tr>';
+    return append
 }
 
 function searchingNotification(options) {
@@ -518,23 +531,61 @@ function serialiseQueryObject(qs) {
     return JSON.stringify(qs, jsonStringEscape);
 };
 
+// closure for elastic search success, which ultimately calls
+// the user's callback
+function elasticSearchSuccess(callback) {
+    return function(data) {
+        var resultobj = {
+            "records" : [],
+            "start" : "",
+            "found" : data.hits.total,
+            "facets" : {}
+        }
+        
+        // load the results into the records part of the result object
+        for (var item = 0; item < data.hits.hits.length; item++) {
+            var res = data.hits.hits[item]
+            if ("fields" in res) {
+                // partial fields are also included here - no special treatment
+                resultobj.records.push(res.fields)
+            } else {
+                resultobj.records.push(res._source)
+            }
+        }
+        
+        for (var item in data.facets) {
+            var facet = data.facets[item]
+            // handle any terms facets
+            if ("terms" in facet) {
+                // FIXME: this is the point where we undo the stuff to do with the
+                // size of the facets
+                var terms = facet["terms"]
+                resultobj["facets"][item] = terms
+            }
+        }
+            
+        callback(data, resultobj)
+    }
+}
+
 function doElasticSearchQuery(params) {
+    // extract the parameters of the request
     var success_callback = params.success
     var complete_callback = params.complete
     var search_url = params.search_url
     var queryobj = params.queryobj
     var datatype = params.datatype
     
+    // serialise the query
     var querystring = serialiseQueryObject(queryobj)
-    alert(querystring)
     
-    
+    // make the call to the elasticsearch web service
     $.ajax({
         type: "get",
         url: search_url,
         data: {source: querystring},
         dataType: datatype,
-        success: success_callback,
+        success: elasticSearchSuccess(success_callback),
         complete: complete_callback
     });
 }
@@ -563,7 +614,7 @@ function doElasticSearchQuery(params) {
             "elasticsearch_facet_inflation" : 100,
             
             // view parameters
-            "facets" : [],
+            "facets" : [], // {"field" : "<es field>", "display" : "<Display Name>", "logic" : "AND|OR", "open" : true|false}
             "extra_facets": {},
             "page_size" : 10,
             "from" : 0,
@@ -576,6 +627,7 @@ function doElasticSearchQuery(params) {
             "default_facet_size" : 10,
             "default_facet_operator" : "AND",
             "default_facet_order" : "count",
+            "default_facet_open" : false,
             
             "predefined_filters" : [],
             
@@ -590,6 +642,7 @@ function doElasticSearchQuery(params) {
             "render_facet_list" : facetList,
             "render_term_facet" : renderTermFacet,
             "render_searching_notification" : searchingNotification,
+            "render_facet_result" : renderFacetResult,
             
             // behaviour plugins
             "behaviour_show_searching" : showSearchingNotification,
@@ -604,7 +657,9 @@ function doElasticSearchQuery(params) {
             
             // internal admin stuff (don't touch)
             "searching" : false,
-            "queryobj" : false
+            "queryobj" : false,
+            "rawdata" : false,
+            "data" : false
         }
         
         // extend the defaults with the provided options
@@ -675,7 +730,7 @@ function doElasticSearchQuery(params) {
          *****************************************************************/
 
         function addDebug(msg, context) {
-            $(".facetview_debug", context).append(msg + "<br><br>").show()
+            $(".facetview_debug", context).show().find("textarea").append(msg + "\n\n")
         }
         
         /**************************************************************
@@ -854,17 +909,23 @@ function doElasticSearchQuery(params) {
         // show the filter values
         function clickFilterShow(event) {
             event.preventDefault();
-            if ( $(this).hasClass('facetview_open') ) {
+            
+            var name = $(this).attr("href")
+            var facet = selectFacet(name)
+            var el = facetElement("#facetview_filter_", name)
+            
+            var open = "open" in facet ? facet["open"] : options.default_facet_open
+            if (open) {
                 $(this).children('i').removeClass('icon-minus');
                 $(this).children('i').addClass('icon-plus');
-                $(this).removeClass('facetview_open');
-                $('#facetview_filter_' + $(this).attr('rel'), obj ).children().find('.facetview_filtervalue').hide();
+                facet["open"] = false
+                el.children().find('.facetview_filtervalue').hide();
                 $(this).siblings('.facetview_filteroptions').hide();
             } else {
                 $(this).children('i').removeClass('icon-plus');
                 $(this).children('i').addClass('icon-minus');
-                $(this).addClass('facetview_open');
-                $('#facetview_filter_' + $(this).attr('rel'), obj ).children().find('.facetview_filtervalue').show();
+                facet["open"] = true
+                el.children().find('.facetview_filtervalue').show();
                 $(this).siblings('.facetview_filteroptions').show();
             }
         };
@@ -975,17 +1036,147 @@ function doElasticSearchQuery(params) {
             }
         }
         
+        /////// facet values /////////////////////////////////
+        
+        function setUIFacetResults(facet, records) {
+            var el = facetElement("#facetview_filter_", facet["field"])
+            el.children().find('.facetview_filtervalue').remove();
+            
+            for (var i in records) {
+                var f = records[i]
+                var append = options.render_facet_result(facet, f)
+                el.append(append);
+            }
+            
+            var open = "open" in facet ? facet["open"] : options.default_facet_open
+            if (open) {
+                el.children().find('.facetview_filtervalue').show();
+            }
+            
+            // FIXME: deal with this when we work on filter selection
+            // $('.facetview_filterchoice', obj).bind('click',clickfilterchoice);
+        }
+        
+        function facetVisibility() {
+            $('.facetview_filters', obj).each(function() {
+                // FIXME: make this into a plugin
+                $(this).find('.facetview_filtershow').css({'color':'#333','font-weight':'bold'}).children('i').show();
+                if ( $(this).children().find('.facetview_filtervalue').length > 1 ) {
+                    $(this).show();
+                } else {
+                    if (options.hide_inactive_facets) {
+                        $(this).hide();
+                    }
+                    $(this).find('.facetview_filtershow').css({'color':'#ccc','font-weight':'normal'}).children('i').hide();
+                };
+            });
+        }
+        
         /**************************************************************
          * search handling
          *************************************************************/
         
-        function querySuccess(data) {
-        
+        function querySuccess(rawdata, results) {
+            if (options.debug) {
+                addDebug(JSON.stringify(rawdata))
+                addDebug(JSON.stringify(results))
+            }
+            
+            // record the data coming from elasticsearch
+            options.rawdata = rawdata;
+            options.data = results;
+            
+            // for each facet, get the results and add them to the page
+            for (var each = 0; each < options.facets.length; each++) {
+                // get the facet, the field name and the size
+                var facet = options.facets[each]
+                var field = facet['field'];
+                var size = facet["size"] ? facet["size"] : options.default_facet_size
+                
+                // get the records to be displayed, limited by the size
+                var records = results["facets"][field];
+                if (!records) { records = [] }
+                records = records.slice(0, size)
+                
+                // set the results on the page
+                setUIFacetResults(facet, records)
+            }
+            
+            // set the facet visibility
+            facetVisibility()
+            
+            return
+            
+            
+            
+            
+            
+
+            // put result metadata on the page
+            if ( typeof(options.paging.from) != 'number' ) {
+                options.paging.from = parseInt(options.paging.from);
+            }
+            if ( typeof(options.paging.size) != 'number' ) {
+                options.paging.size = parseInt(options.paging.size);
+            }
+            if ( options.pager_slider ) {
+                var metaTmpl = '<div style="font-size:20px;font-weight:bold;margin:5px 0 10px 0;padding:5px 0 5px 0;border:1px solid #eee;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;"> \
+                    <a alt="previous" title="previous" class="facetview_decrement" style="color:#333;float:left;padding:0 40px 20px 20px;" href="{{from}}">&lt;</a> \
+                    <span style="margin:30%;">{{from}} &ndash; {{to}} of {{total}}</span> \
+                    <a alt="next" title="next" class="facetview_increment" style="color:#333;float:right;padding:0 20px 20px 40px;" href="{{to}}">&gt;</a> \
+                </div>';
+            } else {
+                var metaTmpl = '<div class="pagination"> \
+                    <ul> \
+                        <li class="prev"><a class="facetview_decrement" href="{{from}}">&laquo; back</a></li> \
+                        <li class="active"><a>{{from}} &ndash; {{to}} of {{total}}</a></li> \
+                        <li class="next"><a class="facetview_increment" href="{{to}}">next &raquo;</a></li> \
+                    </ul> \
+                </div>';
+            };
+            $('.facetview_metadata', obj).first().html("Not found...");
+            if (data.found) {
+                var from = options.paging.from + 1;
+                var size = options.paging.size;
+                !size ? size = 10 : "";
+                var to = options.paging.from+size;
+                data.found < to ? to = data.found : "";
+                var meta = metaTmpl.replace(/{{from}}/g, from);
+                meta = meta.replace(/{{to}}/g, to);
+                meta = meta.replace(/{{total}}/g, data.found);
+                $('.facetview_metadata', obj).html("").append(meta);
+                $('.facetview_decrement', obj).bind('click',decrement);
+                from < size ? $('.facetview_decrement', obj).html('..') : "";
+                $('.facetview_increment', obj).bind('click',increment);
+                data.found <= to ? $('.facetview_increment', obj).html('..') : "";
+            }
+
+            // put the filtered results on the page
+            $('#facetview_results',obj).html("");
+            var infofiltervals = new Array();
+            $.each(data.records, function(index, value) {
+                // write them out to the results div
+                 $('#facetview_results', obj).append( buildrecord(index) );
+                 options.linkify ? $('#facetview_results tr:last-child', obj).linkify() : false;
+            });
+            if ( options.result_box_colours.length > 0 ) {
+                jQuery('.result_box', obj).each(function () {
+                    var colour = options.result_box_colours[Math.floor(Math.random()*options.result_box_colours.length)] ;
+                    jQuery(this).css("background-color", colour);
+                });
+            }
+            $('#facetview_results', obj).children().hide().fadeIn(options.fadein);
+            $('.facetview_viewrecord', obj).bind('click',viewrecord);
+            jQuery('.notify_loading').hide();
+            // if a post search callback is provided, run it
+            if (typeof options.post_search_callback == 'function') {
+                options.post_search_callback.call(this);
+            }
         }
         
         function queryComplete(jqXHR, textStatus) {
-            options.searching = false;
             options.behaviour_finished_searching(options, obj)
+            options.searching = false;
         }
         
         function doSearch() {

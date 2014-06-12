@@ -30,10 +30,10 @@ jQuery(document).ready(function($) {
             q : "Money",
             facets: [
                 {'field': 'price', 'display': 'Price', "type" : "range"},
-                {'field': 'subject.exact', 'display': 'Subject', "logic" : "OR"},
+                {'field': 'subject.exact', 'display': 'Subject', "logic" : "OR", "open" : true},
                 {'field': 'condition.exact', 'display': 'Condition', "logic" : "AND"},
                 {'field': 'year', 'display': 'Publication Year', "size" : 26},
-                {'field': 'edition.exact', 'display': 'Edition', "order" : "reverse_count"}
+                {'field': 'edition.exact', 'display': 'Edition', "order" : "reverse_count", "open" : true}
             ],
             default_facet_size: 11,
             default_facet_operator: "AND",
