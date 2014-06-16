@@ -1398,15 +1398,16 @@ function doElasticSearchQuery(params) {
             var frag = options.render_facet_values(options, facet)
             el.append(frag)
             
-            // var open = "open" in facet ? facet["open"] : options.default_facet_open
             setUIFacetOpen(facet)
-            //if (open) {
-            //    el.children().find('.facetview_filtervalue').show();
-            //}
             
+            // FIXME: probably all bindings should come with an unbind first
             // enable filter selection
             $('.facetview_filterchoice', obj).unbind('click', clickFilterChoice);
             $('.facetview_filterchoice', obj).bind('click', clickFilterChoice);
+            
+            // enable filter removal
+            $('.facetview_filterselected', obj).unbind('click', clickClearFilter);
+            $('.facetview_filterselected', obj).bind('click', clickClearFilter);
         }
         
         /////// selected filters /////////////////////////////////
@@ -1437,6 +1438,17 @@ function doElasticSearchQuery(params) {
             }
         }
         
+        function deSelectFilter(field, value) {
+            if (field in options.active_filters) {
+                var filter = options.active_filters[field]
+                var index = $.inArray(value, filter)
+                filter.splice(index, 1)
+                if (filter.length === 0) {
+                    delete options.active_filters[field]
+                }
+            }
+        }
+        
         function setUISelectedFilters() {
             var frag = ""
             for (var field in options.active_filters) {
@@ -1452,6 +1464,19 @@ function doElasticSearchQuery(params) {
         
         function clickClearFilter(event) {
             event.preventDefault()
+            if ($(this).hasClass("facetview_inactive_link")) {
+                return
+            }
+            
+            var field = $(this).attr("data-field");
+            var value = $(this).attr("data-value");
+            
+            deSelectFilter(field, value)
+            setUISelectedFilters()
+            
+            // reset the result set to the beginning and search again
+            options.from = 0;
+            doSearch();
         }
         
         function facetVisibility() {
