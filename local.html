@@ -33,7 +33,9 @@ jQuery(document).ready(function($) {
                 {'field': 'subject.exact', 'display': 'Subject', "logic" : "OR", "open" : true},
                 {'field': 'condition.exact', 'display': 'Condition', "logic" : "AND"},
                 {'field': 'year', 'display': 'Publication Year', "size" : 26},
-                {'field': 'edition.exact', 'display': 'Edition', "order" : "reverse_count", "open" : true}
+                {'field': 'edition.exact', 'display': 'Edition', "order" : "reverse_count", "open" : true},
+                {'field' : 'inactive', 'display' : 'Inactive Visible', 'deactivate_threshold' : 2},
+                {'field' : 'invisible', 'display' : 'Inactive Inisible', 'deactivate_threshold' : 2, 'hide_inactive' : true},
             ],
             default_facet_size: 11,
             default_facet_operator: "AND",
@@ -54,7 +56,15 @@ jQuery(document).ready(function($) {
             ],
             sharesave_link: true,
             debug: true,
-            fields: ["title", "authors"]
+            fields: ["id", "title", "authors"],
+            render_results_metadata: pageSlider,
+            "result_display" : [ 
+                [ {"pre" : "<strong>", "field": "title", "post" : "</strong>"} ],
+                [ {"pre" : "<em>", "field": "authors", "post" : "</em>"} ],
+            ],
+            selected_filters_in_facet: true,
+            show_filter_field : true,
+            show_filter_logic: true
         });
     });
 });
