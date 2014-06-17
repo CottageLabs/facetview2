@@ -630,26 +630,57 @@ function optionsFromQuery(query) {
     if (query.query) {
         var sq = query.query
         var must = []
+        var qs = undefined
+        
+        // if this is a filtered query, pull must and qs out of the filter
+        // otherwise the root of the query is the query_string object
         if (sq.filtered) {
             must = sq.filtered.filter.bool.must
-        } else if (sq.bool) {
-            must = sq.bool.must
+            qs = sq.filtered.query
+        } else {
+            qs = sq
         }
         
         // go through each clause in the must and pull out the options
+        if (must.length > 0) {
+            opts["active_filters"] = {}
+            opts["_selected_operators"] = {}
+        }
         for (var i = 0; i < must.length; i++) {
             var clause = must[i]
-            if (clause.query_string) {
-                var q = clause.query_string.query
-                var field = clause.query_string.default_field
-                var op = clause.query_string.default_operator
-                if (q) { opts["q"] = q }
+            
+            // could be a term query (implies AND on this field)
+            if ("term" in clause) {
+                for (var field in clause.term) {
+                    opts["_selected_operators"][field] = "AND"
+                    var value = clause.term[field]
+                    if (!(field in opts["active_filters"])) {
+                        opts["active_filters"][field] = []
+                    }
+                    opts["active_filters"][field].push(value)
+                }
+            }
+            
+            // could be a terms query (implies OR on this field)
+            if ("terms" in clause) {
+                for (var field in clause.terms) {
+                    opts["_selected_operators"][field] = "OR"
+                    var values = clause.terms[field]
+                    opts["active_filters"][field] = values
+                }
+            }
+        }
+        
+        if (qs) {
+            if (qs.query_string) {
+                var string = qs.query_string.query
+                var field = qs.query_string.default_field
+                var op = qs.query_string.default_operator
+                if (string) { opts["q"] = string }
                 if (field) { opts["searchfield"] = field }
                 if (op) { opts["default_operator"] = op }
             }
         }
-        
-        // FIXME: add more parsers to deal with the other clauses that get generated
         
         return opts
     }
@@ -660,22 +691,50 @@ function elasticSearchQuery(params) {
     var options = params.options
     var include_facets = "include_facets" in params ? params.include_facets : true
     var include_fields = "include_fields" in params ? params.include_fields : true
-
-    // the query object we will be building up
-    var qs = {"query" : {"bool" : {"must" : []}}};
     
-    // read any filters out of the options
-    // FIXME: do this when we have done filter selection mechanics
+    // FIXME: duplicated from inside the facetview jquery plugin bit below - perhaps rationalise this somehow?
+    // get the right facet from the options, based on the name
+    function selectFacet(name) {
+        for (var i = 0; i < options.facets.length; i++) {
+            var item = options.facets[i];
+            if ('field' in item) {
+                if (item['field'] === name) {
+                    return item
+                }
+            }
+        }
+    }
+    
+    // read any filters out of the options and create an array of "must" queries which 
+    // will constrain the search results
+    var filter_must = []
+    for (var field in options.active_filters) {
+        var facet = selectFacet(field)
+        var filter_list = options.active_filters[field]
+        var logic = options.default_facet_operator
+        if ("logic" in facet) { logic = facet["logic"] }
+        if (logic === "AND") {
+            for (var i in filter_list) {
+                var value = filter_list[i]
+                var tq = {"term" : {}}
+                tq["term"][field] = value
+                filter_must.push(tq)
+            }
+        } else if (logic === "OR") {
+            var tq = {"terms" : {}}
+            tq["terms"][field] = filter_list
+            filter_must.push(tq)
+        }
+    }
     
     // read any pre-defined filters
     // FIXME: do this when we have understood filter selection mechanics (above)
     
-    // search string and search field
+    // search string and search field produce a query_string query element
     var querystring = options.q
     var searchfield = options.searchfield
     var default_operator = options.default_operator
     var ftq = undefined
-    
     if (querystring) {
         ftq = {'query_string' : { 'query': fuzzify(querystring, options.default_freetext_fuzzify) }};
         if (searchfield) {
@@ -687,7 +746,16 @@ function elasticSearchQuery(params) {
     } else {
         ftq = {"match_all" : {}}
     }
-    qs.query.bool.must.push(ftq)
+    
+    // if there are filter constraints (filter_must) then we create a filtered query,
+    // otherwise make a normal query
+    var qs = undefined
+    if (filter_must.length > 0) {
+        qs = {"query" : {"filtered" : {"filter" : {"bool" : {"must" : filter_must}}}}}
+        qs.query.filtered["query"] = ftq;
+    } else {
+        qs = {"query" : ftq}
+    }
     
     // sort order and direction
     options.sort.length > 0 ? qs['sort'] = options.sort : "";
@@ -734,7 +802,11 @@ function elasticSearchQuery(params) {
     }
     
     return qs
+}
     
+    // FIXME: effectively this stuff can go, but we need to replicate range faceting and
+    // predefined filters and these are here as a reminder
+    /*
     var bool = options.bool ? options.bool : false
     var nested = false;
     var seenor = []; // track when an or group are found and processed
@@ -756,41 +828,6 @@ function elasticSearchQuery(params) {
             } else {
                 bool['must'].push(robj);
             }
-        } else {
-            // TODO: check if this has class facetview_logic_or
-            // if so, need to build a should around it and its siblings
-            if ( $(this).hasClass('facetview_logic_or') ) {
-                if ( $.inArray($(this).attr("rel"), seenor) === -1 ) {
-                // if ( !($(this).attr('rel') in seenor) ) {
-                    seenor.push($(this).attr('rel'));
-                    var bobj = {'bool':{'should':[]}};
-                    $('.facetview_filterselected[rel="' + $(this).attr('rel') + '"]').each(function() {
-                        if ( $(this).hasClass('facetview_logic_or') ) {
-                            var ob = {'term':{}};
-                            ob['term'][ $(this).attr('rel') ] = $(this).attr('href');
-                            bobj.bool.should.push(ob);
-                        };
-                    });
-                    // FIXME: this is a bit counter intuitive, may want to take it out
-                    //if ( bobj.bool.should.length == 1 ) {
-                    //    var spacer = {'match_all':{}};
-                    //    bobj.bool.should.push(spacer);
-                    //}
-                }
-            } else {
-                var bobj = {'term':{}};
-                bobj['term'][ $(this).attr('rel') ] = $(this).attr('href');
-            }
-            
-            // check if this should be a nested query
-            if (bobj) {
-                var parts = $(this).attr('rel').split('.');
-                if ( options.nested.indexOf(parts[0]) != -1 ) {
-                    !nested ? nested = {"nested":{"_scope":parts[0],"path":parts[0],"query":{"bool":{"must":[bobj]}}}} : nested.nested.query.bool.must.push(bobj);
-                } else {
-                    bool['must'].push(bobj);
-                }
-            }
         }
     });
     for (var item in options.predefined_filters) {
@@ -804,7 +841,8 @@ function elasticSearchQuery(params) {
             bool['must'].push(pobj);
         }
     }
-}
+    */
+
 
 function fuzzify(querystr, default_freetext_fuzzify) {
     var rqs = querystr
@@ -902,8 +940,6 @@ function doElasticSearchQuery(params) {
         complete: complete_callback
     });
 }
-
-
 
 /******************************************************************
  * FACETVIEW ITSELF
@@ -1008,7 +1044,7 @@ function doElasticSearchQuery(params) {
             // extend the defaults with the provided options
             var provided_options = $.extend(defaults, options);
             
-            // FIXME: we will also need to deal with options which come from the URL
+            // deal with the options that come from the url, which require some special treatment
             var url_params = $.getUrlVars();
             var url_options = {}
             if ("source" in url_params) {
@@ -1018,6 +1054,22 @@ function doElasticSearchQuery(params) {
                 url_options["url_fragment_identifier"] = url_params["url_fragment_identifier"]
             }
             provided_options = $.extend(provided_options, url_options);
+            
+            // copy the _selected_operators data into the relevant facets
+            // for each pre-selected operator, find the related facet and set its "logic" property
+            var so = provided_options._selected_operators ? provided_options._selected_operators : {}
+            for (var field in so) {
+                var operator = so[field]
+                for (var i in provided_options.facets) {
+                    var facet = provided_options.facets[i]
+                    if (facet.field === field) {
+                        facet["logic"] = operator
+                    }
+                }
+            }
+            if ("_selected_operators" in provided_options) {
+                delete provided_options._selected_operators
+            }
             
             return provided_options
         }
@@ -1057,6 +1109,9 @@ function doElasticSearchQuery(params) {
                 setUIFacetSort({facet : f})
                 setUIFacetAndOr({facet : f})
             }
+            
+            // for any existing filters, render them
+            setUISelectedFilters()
         }
         
         function urlFromOptions() {
