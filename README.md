@@ -10,17 +10,17 @@ FacetView2 is a major re-write of the original FacetView application.  See https
 
 Add the following code to your web page:
 
-  <script type="text/javascript" src="vendor/jquery/1.7.1/jquery-1.7.1.min.js"></script>
-  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
-  <script type="text/javascript" src="vendor/bootstrap/js/bootstrap.min.js"></script>  
-  <link rel="stylesheet" href="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.css">
-  <script type="text/javascript" src="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.min.js"></script>
-  <script type="text/javascript" src="jquery.facetview2.js"></script>
-  <link rel="stylesheet" href="css/facetview.css">
+    <script type="text/javascript" src="vendor/jquery/1.7.1/jquery-1.7.1.min.js"></script>
+    <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+    <script type="text/javascript" src="vendor/bootstrap/js/bootstrap.min.js"></script>  
+    <link rel="stylesheet" href="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.css">
+    <script type="text/javascript" src="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.min.js"></script>
+    <script type="text/javascript" src="jquery.facetview2.js"></script>
+    <link rel="stylesheet" href="css/facetview.css">
 
 Then add a script somewhere to your page that actually calls and sets up the  facetview on a particular page element:
 
-  <script type="text/javascript">
+    <script type="text/javascript">
     jQuery(document).ready(function($) {
       $('.facet-view-simple').facetview({
         search_url: 'http://localhost:9200/myindex/type/_search',
@@ -31,7 +31,7 @@ Then add a script somewhere to your page that actually calls and sets up the  fa
         ],
       });
     });
-  </script>
+    </script>
 
 
 ## Customisation
@@ -46,8 +46,8 @@ Copyright and License
 
 Copyright 2014 Cottage Labs.
 
-Licensed under the `MIT License`_
+Licensed under the MIT Licence
 
-.. _twitter bootstrap: http://twitter.github.com/bootstrap/
-.. _MIT License: http://www.opensource.org/licenses/mit-license.php
+twitter bootstrap: http://twitter.github.com/bootstrap/
+MIT License: http://www.opensource.org/licenses/mit-license.php
 
