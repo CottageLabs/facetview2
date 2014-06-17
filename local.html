@@ -9,8 +9,6 @@
   <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
   <script type="text/javascript" src="vendor/bootstrap/js/bootstrap.min.js"></script>  
 
-  <script type="text/javascript" src="vendor/linkify/1.0/jquery.linkify-1.0-min.js"></script>  
-  
   <link rel="stylesheet" href="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.css">
   <script type="text/javascript" src="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.min.js"></script>
 
@@ -24,12 +22,13 @@ jQuery(document).ready(function($) {
         $(this).facetview({
             search_url : "http://localhost:9200/uniboard/advert/_search",
             datatype : "jsonp",
+            default_freetext_fuzzify: "*",
             page_size: 15,
             sort: [{"title.exact" : {"order" : "asc"}}],
             searchfield: "title",
             q : "Money",
             facets: [
-                {'field': 'price', 'display': 'Price', "type" : "range"},
+                {'field': 'price', 'display': 'Price', "type" : "range", "range" : [{"to" : 10, "display" : "less than £10"}, {"from" : 10, "to" : 20, "display" : "£10 - £20"}, {"from" : 20, "to" : 40, "display" : "£20 - £40"}, {"from" : 40, "display" : "£40+"}], "open" : true},
                 {'field': 'subject.exact', 'display': 'Subject', "logic" : "OR", "open" : true},
                 {'field': 'condition.exact', 'display': 'Condition', "logic" : "AND"},
                 {'field': 'year', 'display': 'Publication Year', "size" : 26},
@@ -64,7 +63,11 @@ jQuery(document).ready(function($) {
             ],
             selected_filters_in_facet: true,
             show_filter_field : true,
-            show_filter_logic: true
+            show_filter_logic: true,
+            //predefined_filters : {
+            //    "subject.exact" : ["Medicine"]
+            //},
+            exclude_predefined_filters_from_facets : false
         });
     });
 });
