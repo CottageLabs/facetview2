@@ -1315,7 +1315,7 @@ function doElasticSearchQuery(params) {
                 
                 // range facet only
                 
-                "ranges" : [                                                        // list of ranges (in order) which define the filters
+                "range" : [                                                        // list of ranges (in order) which define the filters
                     {"from" : <num>, "to" : <num>, "display" : "<display name>"}    // from = lower bound (inclusive), to = upper boud (exclusive)
                 ]                                                                   // display = display name for this range
                 "hide_empty_range" : true|false                                     // if there are no results for a given range, should it be hidden
