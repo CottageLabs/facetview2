@@ -1185,12 +1185,20 @@ function optionsFromQuery(query) {
             
             // cound be a geo distance query
             if ("geo_distance_range" in clause) {
-                for (var field in clause.geo_distance_range) {
-                    var gq = clause.geo_distance_range[field]
-                    var range = {}
-                    if (gq.lt) { range["to"] = stripDistanceUnits(gq.lt) }
-                    if (gq.gte) { range["from"] = stripDistanceUnits(gq.gte) }
+                var gdr = clause.geo_distance_range
+                
+                // the range is defined at the root of the range filter
+                var range = {}
+                if ("lt" in gdr) { range["to"] = stripDistanceUnits(gdr.lt) }
+                if ("gte" in gdr) { range["from"] = stripDistanceUnits(gdr.gte) }
+                
+                // FIXME: at some point we may need to make this smarter, if we start including other data
+                // in the geo_distance_range filter definition
+                // then we have to go looking for the field name
+                for (var field in gdr) {
+                    if (field === "lt" || field === "gte") { continue }
                     opts["_active_filters"][field] = range
+                    break
                 }
             }
         }
@@ -1203,6 +1211,8 @@ function optionsFromQuery(query) {
                 if (string) { opts["q"] = string }
                 if (field) { opts["searchfield"] = field }
                 if (op) { opts["default_operator"] = op }
+            } else if (qs.match_all) {
+                opts["q"] = ""
             }
         }
         
@@ -1253,9 +1263,9 @@ function elasticSearchQuery(params) {
     
     function geoFilter(facet, value) {
         var gq = {"geo_distance_range" : {}}
-        gq["geo_distance_range"][facet.field] = {}
-        if (value.to) { gq["geo_distance_range"][facet.field]["lt"] = value.to + facet.unit }
-        if (value.from) { gq["geo_distance_range"][facet.field]["gte"] = value.from + facet.unit }
+        if (value.to) { gq["geo_distance_range"]["lt"] = value.to + facet.unit }
+        if (value.from) { gq["geo_distance_range"]["gte"] = value.from + facet.unit }
+        gq["geo_distance_range"][facet.field] = [facet.lon, facet.lat] // note the order of lon/lat to comply with GeoJSON
         return gq
     }
     
