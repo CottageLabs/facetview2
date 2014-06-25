@@ -83,6 +83,10 @@ function safeId(s) {
     return s.replace(/\./gi,'_').replace(/\:/gi,'_')
 }
 
+function endsWith(str, suffix) {
+    return str.indexOf(suffix, str.length - suffix.length) !== -1;
+}
+
 function ie8compat(o) {
     // Clean up all array options
     // IE8 interprets trailing commas as introducing an undefined
@@ -270,6 +274,8 @@ function facetList(options) {
      * should (not must) respect the following config
      * 
      * options.render_terms_facet - renders a term facet into the list
+     * options.render_range_facet - renders a range facet into the list
+     * options.render_geo_facet - renders a geo distance facet into the list
      */
     if (options.facets.length > 0) {
         var filters = options.facets;
@@ -281,6 +287,8 @@ function facetList(options) {
                 thefilters += options.render_terms_facet(facet, options)
             } else if (type === "range") {
                 thefilters += options.render_range_facet(facet, options)
+            } else if (type === "geo_distance") {
+                thefilters += options.render_geo_facet(facet, options)
             }
         };
         return thefilters
@@ -339,6 +347,35 @@ function renderRangeFacet(facet, options) {
      */
      
     // full template for the facet - we'll then go on and do some find and replace
+    var filterTmpl = '<table id="facetview_filter_{{FILTER_NAME}}" class="facetview_filters table table-bordered table-condensed table-striped" data-href="{{FILTER_EXACT}}"> \
+        <tr><td><a class="facetview_filtershow" title="filter by {{FILTER_DISPLAY}}" \
+        style="color:#333; font-weight:bold;" href="{{FILTER_EXACT}}"><i class="icon-plus"></i> {{FILTER_DISPLAY}} \
+        </a> \
+        </td></tr> \
+        </table>';
+    
+    // put the name of the field into FILTER_NAME and FILTER_EXACT
+    filterTmpl = filterTmpl.replace(/{{FILTER_NAME}}/g, safeId(facet['field'])).replace(/{{FILTER_EXACT}}/g, facet['field']);
+    
+    // set the display name of the facet in FILTER_DISPLAY
+    if ('display' in facet) {
+        filterTmpl = filterTmpl.replace(/{{FILTER_DISPLAY}}/g, facet['display']);
+    } else {
+        filterTmpl = filterTmpl.replace(/{{FILTER_DISPLAY}}/g, facet['field']);
+    };
+    
+    return filterTmpl
+}
+
+function renderGeoFacet(facet, options) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * id: facetview_filter_<safe filtername> - table for the specific filter
+     *
+     * each anchor must also have href="<filtername>"
+     */
+     // full template for the facet - we'll then go on and do some find and replace
     var filterTmpl = '<table id="facetview_filter_{{FILTER_NAME}}" class="facetview_filters table table-bordered table-condensed table-striped" data-href="{{FILTER_EXACT}}"> \
         <tr><td><a class="facetview_filtershow" title="filter by {{FILTER_DISPLAY}}" \
         style="color:#333; font-weight:bold;" href="{{FILTER_EXACT}}"><i class="icon-plus"></i> {{FILTER_DISPLAY}} \
@@ -488,6 +525,88 @@ function renderRangeFacetValues(options, facet) {
     return frag
 }
 
+function renderGeoFacetValues(options, facet) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * class: facetview_filtervalue - wrapper element for any value included in the list
+     * class: facetview_filterselected - for any anchors around selected filters
+     * class: facetview_clear - for any link which should remove a filter (must also provide data-field and data-value)
+     * class: facetview_filterchoice - tags the anchor wrapped around the name of the (unselected) field
+     *
+     * should (not must) respect the following config
+     *
+     * options.selected_filters_in_facet - whether to show selected filters in the facet pull-down (if that's your idiom)
+     * options.render_facet_result - function which renders the individual facets
+     */
+     
+    function getValueForRange(range, values) {
+        for (var i in values) {
+            var value = values[i]
+            
+            // the "to"s match if they both value and range have a "to" and they are the same, or if neither have a "to"
+            var match_to = (value.to && range.to && value.to === range.to) || (!value.to && !range.to)
+            
+            // the "from"s match if they both value and range have a "from" and they are the same, or if neither have a "from"
+            var match_from = (value.from && range.from && value.from === range.from) || (!value.from && !range.from)
+            
+            if (match_to && match_from) {
+                return value
+            }
+        }
+    }
+    
+    function getRangeForValue(value, facet) {
+        for (var i in facet.distance) {
+            var range = facet.distance[i]
+            
+            // the "to"s match if they both value and range have a "to" and they are the same, or if neither have a "to"
+            var match_to = (value.to && range.to && value.to === range.to.toString()) || (!value.to && !range.to)
+            
+            // the "from"s match if they both value and range have a "from" and they are the same, or if neither have a "from"
+            var match_from = (value.from && range.from && value.from === range.from.toString()) || (!value.from && !range.from)
+            
+            if (match_to && match_from) {
+                return range
+            }
+        }
+    }
+    
+    var selected_geo = options.active_filters[facet.field]
+    var frag = ""
+    
+    // render the active filter if there is one
+    if (options.selected_filters_in_facet && selected_geo) {
+        var range = getRangeForValue(selected_geo, facet)
+        already_selected = true
+        
+        var data_to = range.to ? " data-to='" + range.to + "' " : ""
+        var data_from = range.from ? " data-from='" + range.from + "' " : ""
+    
+        var sf = '<tr class="facetview_filtervalue" style="display:none;"><td>'
+        sf += "<strong>" + range.display + "</strong> "
+        sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" ' + data_to + data_from + ' href="#"><i class="icon-black icon-remove" style="margin-top:1px;"></i></a>'
+        sf += "</td></tr>"
+        frag += sf
+        
+        // if a range is already selected, we don't render any more
+        return frag
+    }
+    
+    // then render the remaining selectable facets if necessary
+    for (var i in facet["distance"]) {
+        var r = facet["distance"][i]
+        var f = getValueForRange(r, facet["values"])
+        if (f.count === 0 && facet.hide_empty_distance) {
+            continue
+        }
+        var append = options.render_geo_facet_result(options, facet, f, r)
+        frag += append
+    }
+    
+    return frag
+}
+
 function renderTermsFacetResult(options, facet, result, selected_filters) {
     /*****************************************
      * overrides must provide the following classes and ids
@@ -503,6 +622,22 @@ function renderTermsFacetResult(options, facet, result, selected_filters) {
 }
 
 function renderRangeFacetResult(options, facet, result, range) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * class: facetview_filtervalue - tags the top level element as being a facet result
+     * class: facetview_filterchoice - tags the anchor wrapped around the name of the field
+     */
+    var data_to = range.to ? " data-to='" + range.to + "' " : ""
+    var data_from = range.from ? " data-from='" + range.from + "' " : ""
+    
+    var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
+                '" data-field="' + facet['field'] + '" ' + data_to + data_from + ' href="#"><span class="facetview_filterchoice_text">' + range.display + '</span>' +
+                '<span class="facetview_filterchoice_count"> (' + result.count + ')</span></a></td></tr>';
+    return append
+}
+
+function renderGeoFacetResult(options, facet, result, range) {
     /*****************************************
      * overrides must provide the following classes and ids
      *
@@ -788,6 +923,61 @@ function renderActiveRangeFilter(options, facet, field, value) {
     return frag        
 }
 
+function renderActiveGeoFilter(options, facet, field, value) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * class: facetview_filterselected - anchor tag for any clickable filter selection
+     * class: facetview_clear - anchor tag for any link which will remove the filter (should also provide data-value and data-field)
+     * class: facetview_inactive_link - any link combined with facetview_filterselected which should not execute when clicked
+     *
+     * should (not must) respect the config
+     *
+     * options.show_filter_field - whether to include the name of the field the filter is active on
+     */
+    
+    function getRangeForValue(value, facet) {
+        for (var i in facet.distance) {
+            var range = facet.distance[i]
+            
+            // the "to"s match if they both value and range have a "to" and they are the same, or if neither have a "to"
+            var match_to = (value.to && range.to && value.to === range.to.toString()) || (!value.to && !range.to)
+            
+            // the "from"s match if they both value and range have a "from" and they are the same, or if neither have a "from"
+            var match_from = (value.from && range.from && value.from === range.from.toString()) || (!value.from && !range.from)
+            
+            if (match_to && match_from) {
+                return range
+            }
+        }
+    }
+    
+    var clean = safeId(field)
+    var display = facet.display ? facet.display : facet.field
+    
+    var frag = "<div id='facetview_filter_group_'" + clean + "' class='btn-group'>"
+    
+    if (options.show_filter_field) {
+        frag += '<a class="btn btn-info facetview_inactive_link facetview_filterselected" href="' + field + '">'
+        frag += '<span class="facetview_filterselected_text"><strong>' + display + '</strong></span>'
+        frag += "</a>"
+    }
+    
+    var range = getRangeForValue(value, facet)
+    
+    var data_to = value.to ? " data-to='" + value.to + "' " : ""
+    var data_from = value.from ? " data-from='" + value.from + "' " : ""
+
+    frag += '<a class="facetview_filterselected facetview_clear btn btn-info" data-field="' + field + '" ' + data_to + data_from + 
+            ' alt="remove" title="remove" href="#">'
+    frag += '<span class="facetview_filterselected_text">' + range.display + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
+    frag += "</a>"
+    
+    frag += "</div>"
+    
+    return frag        
+}
+
 /******************************************************************
  * DEFAULT CALLBACKS AND PLUGINS
  *****************************************************************/
@@ -910,7 +1100,20 @@ function getUrlVars() {
  * ELASTICSEARCH INTEGRATION
  *****************************************************************/
 
+var elasticsearch_distance_units = ["km", "mi", "miles", "in", "inch", "yd", "yards", "kilometers", "mm", "millimeters", "cm", "centimeters", "m", "meters"]
+
 function optionsFromQuery(query) {
+
+    function stripDistanceUnits(val) {
+        for (var i in elasticsearch_distance_units) {
+            var unit = elasticsearch_distance_units[i]
+            if (endsWith(val, unit)) {
+                return val.substring(0, val.length - unit.length)
+            }
+        }
+        return val
+    }
+    
     var opts = {}
     
     // from position
@@ -979,6 +1182,17 @@ function optionsFromQuery(query) {
                     opts["_active_filters"][field] = range
                 }
             }
+            
+            // cound be a geo distance query
+            if ("geo_distance_range" in clause) {
+                for (var field in clause.geo_distance_range) {
+                    var gq = clause.geo_distance_range[field]
+                    var range = {}
+                    if (gq.lt) { range["to"] = stripDistanceUnits(gq.lt) }
+                    if (gq.gte) { range["from"] = stripDistanceUnits(gq.gte) }
+                    opts["_active_filters"][field] = range
+                }
+            }
         }
         
         if (qs) {
@@ -1037,6 +1251,14 @@ function elasticSearchQuery(params) {
         return rq
     }
     
+    function geoFilter(facet, value) {
+        var gq = {"geo_distance_range" : {}}
+        gq["geo_distance_range"][facet.field] = {}
+        if (value.to) { gq["geo_distance_range"][facet.field]["lt"] = value.to + facet.unit }
+        if (value.from) { gq["geo_distance_range"][facet.field]["gte"] = value.from + facet.unit }
+        return gq
+    }
+    
     // function to make the relevant filters from the filter definition
     function makeFilters(filter_definition) {
         var filters = []
@@ -1048,8 +1270,9 @@ function elasticSearchQuery(params) {
                 filters.push(termsFilter(facet, filter_list))
             } else if (facet.type === "range") {
                 filters.push(rangeFilter(facet, filter_list))
-            }
-            
+            } else if (facet.type == "geo_distance") {
+                filters.push(geoFilter(facet, filter_list))
+            }            
         }
         return filters
     }
@@ -1128,6 +1351,19 @@ function elasticSearchQuery(params) {
                 }
                 facet["range"] = { }
                 facet["range"][defn.field] = ranges
+            } else if (defn.type === "geo_distance") {
+                facet["geo_distance"] = {}
+                facet["geo_distance"][defn["field"]] = [defn.lon, defn.lat] // note that the order is lon/lat because of GeoJSON
+                facet["geo_distance"]["unit"] = defn.unit
+                var ranges = []
+                for (var r in defn["distance"]) {
+                    var def = defn["distance"][r]
+                    var robj = {}
+                    if (def.to) { robj["to"] = def.to }
+                    if (def.from) { robj["from"] = def.from }
+                    ranges.push(robj)
+                }
+                facet["geo_distance"]["ranges"] = ranges
             }
             qs["facets"][defn["field"]] = facet
         }
@@ -1206,6 +1442,7 @@ function elasticSearchSuccess(callback) {
             if ("terms" in facet) {
                 var terms = facet["terms"]
                 resultobj["facets"][item] = terms
+            // handle any range/geo_distance_range facets
             } else if ("ranges" in facet) {
                 var range = facet["ranges"]
                 resultobj["facets"][item] = range
@@ -1302,7 +1539,7 @@ function doElasticSearchQuery(params) {
             {
                 "field" : "<elasticsearch field>"                                   // field upon which to facet
                 "display" : "<display name>",                                       // display name for the UI
-                "type": "term|range",                                               // the kind of facet this will be
+                "type": "term|range|geo_distance",                                  // the kind of facet this will be
                 "open" : true|false,                                                // whether the facet should be open or closed (initially)
                 
                 // terms facet only
@@ -1315,10 +1552,20 @@ function doElasticSearchQuery(params) {
                 
                 // range facet only
                 
-                "range" : [                                                        // list of ranges (in order) which define the filters
+                "range" : [                                                         // list of ranges (in order) which define the filters
                     {"from" : <num>, "to" : <num>, "display" : "<display name>"}    // from = lower bound (inclusive), to = upper boud (exclusive)
-                ]                                                                   // display = display name for this range
-                "hide_empty_range" : true|false                                     // if there are no results for a given range, should it be hidden
+                ],                                                                  // display = display name for this range
+                "hide_empty_range" : true|false,                                    // if there are no results for a given range, should it be hidden
+                
+                // geo distance facet only
+                
+                "distance" : [                                                      // list of distances (in order) which define the filters
+                    {"from" : <num>, "to" : <num>, "display" : "<display name>"}    // from = lower bound (inclusive), to = upper boud (exclusive)
+                ],                                                                  // display = display name for this distance
+                "hide_empty_distance" : true|false,                                 // if there are no results for a given distance, should it be hidden
+                "unit" : "<unit of distance, e.g. km or mi>"                        // unit to calculate distances in (e.g. km or mi)
+                "lat" : <latitude>                                                  // latitude from which to measure distances
+                "lon" : <longitude>                                                 // longitude from which to measure distances
                 
                 // admin use only
                 
@@ -1341,6 +1588,10 @@ function doElasticSearchQuery(params) {
             "default_facet_hide_inactive" : false,
             "default_facet_deactivate_threshold" : 0, // equal to or less than this number will deactivate the facet
             "default_hide_empty_range" : true,
+            "default_hide_empty_distance" : true,
+            "default_distance_unit" : "km",
+            "default_distance_lat" : 51.4768,       // Greenwich meridian (give or take a few decimal places)
+            "default_distance_lon" : 0.0,           //
             
             ///// search bar configuration /////////////////////////////
             
@@ -1439,6 +1690,11 @@ function doElasticSearchQuery(params) {
             "render_range_facet_values" : renderRangeFacetValues,   // the list of range facet values
             "render_range_facet_result" : renderRangeFacetResult,   // individual range facet values
             
+            // render the geo distance facet, the list of values and the value itself
+            "render_geo_facet" : renderGeoFacet,                // overall framework for a geo distance facet
+            "render_geo_facet_values" : renderGeoFacetValues,   // the list of geo distance facet values
+            "render_geo_facet_result" : renderGeoFacetResult,   // individual geo distance facet values
+            
             // render any searching notification (which will then be shown/hidden as needed)
             "render_searching_notification" : searchingNotification,
             
@@ -1456,6 +1712,9 @@ function doElasticSearchQuery(params) {
             
             // render a range filter interface component (e.g. the filter name and the human readable description of the selected range)
             "render_active_range_filter" : renderActiveRangeFilter,
+            
+            // render a geo distance filter interface component (e.g. the filter name and the human readable description of the selected range)
+            "render_active_geo_filter" : renderActiveGeoFilter,
             
             ///// configs for standard render functions /////////////////////////////
             
@@ -1583,6 +1842,10 @@ function doElasticSearchQuery(params) {
                 if (!("hide_inactive" in facet)) { facet["hide_inactive"] = provided_options.default_facet_hide_inactive }
                 if (!("deactivate_threshold" in facet)) { facet["deactivate_threshold"] = provided_options.default_facet_deactivate_threshold }
                 if (!("hide_empty_range" in facet)) { facet["hide_empty_range"] = provided_options.default_hide_empty_range }
+                if (!("hide_empty_distance" in facet)) { facet["hide_empty_distance"] = provided_options.default_hide_empty_distance }
+                if (!("unit" in facet)) { facet["unit"] = provided_options.default_distance_unit }
+                if (!("lat" in facet)) { facet["lat"] = provided_options.default_distance_lat }
+                if (!("lon" in facet)) { facet["lon"] = provided_options.default_distance_lon }
             }
             
             return provided_options
@@ -1934,6 +2197,8 @@ function doElasticSearchQuery(params) {
                 frag = options.render_terms_facet_values(options, facet)
             } else if (facet.type === "range") {
                 frag = options.render_range_facet_values(options, facet)
+            } else if (facet.type === "geo_distance") {
+                frag = options.render_geo_facet_values(options, facet)
             }
             if (frag) {
                 el.append(frag)
@@ -1962,6 +2227,11 @@ function doElasticSearchQuery(params) {
             if (facet.type === "terms") {
                 value = $(this).attr("data-value");
             } else if (facet.type === "range") {
+                var from = $(this).attr("data-from");
+                var to = $(this).attr("data-to");
+                if (from) { value["from"] = from }
+                if (to) { value["to"] = to }
+            } else if (facet.type === "geo_distance") {
                 var from = $(this).attr("data-from");
                 var to = $(this).attr("data-to");
                 if (from) { value["from"] = from }
@@ -1996,6 +2266,9 @@ function doElasticSearchQuery(params) {
             } else if (facet.type === "range") {
                 // NOTE: we are implicitly stating that range filters cannot be OR'd
                 options.active_filters[field] = value
+            } else if (facet.type === "geo_distance") {
+                // NOTE: we are implicitly stating that geo distance range filters cannot be OR'd
+                options.active_filters[field] = value
             }
         }
         
@@ -2010,6 +2283,8 @@ function doElasticSearchQuery(params) {
                     }
                 } else if (facet.type === "range") {
                     delete options.active_filters[field]
+                } else if (facet.type === "geo_distance") {
+                    delete options.active_filters[field]
                 }
             }
         }
@@ -2023,6 +2298,8 @@ function doElasticSearchQuery(params) {
                     frag += options.render_active_terms_filter(options, facet, field, filter_list)
                 } else if (facet.type === "range") {
                     frag += options.render_active_range_filter(options, facet, field, filter_list)
+                } else if (facet.type === "geo_distance") {
+                    frag += options.render_active_geo_filter(options, facet, field, filter_list)
                 }
             }
             
@@ -2047,6 +2324,11 @@ function doElasticSearchQuery(params) {
                 var to = $(this).attr("data-to");
                 if (from) { value["from"] = from }
                 if (to) { value["to"] = to }
+            } else if (facet.type === "geo_distance") {
+                var from = $(this).attr("data-from");
+                var to = $(this).attr("data-to");
+                if (from) { value["from"] = from }
+                if (to) { value["to"] = to }
             }
             
             deSelectFilter(facet, field, value)
@@ -2061,7 +2343,33 @@ function doElasticSearchQuery(params) {
             $('.facetview_filters', obj).each(function() {
                 var facet = selectFacet($(this).attr('data-href'));
                 var values = "values" in facet ? facet["values"] : []
-                var visible = facet.deactivate_threshold <= values.length
+                var visible = true
+                if (facet.type === "terms") {
+                    // terms facet becomes deactivated if the number of results is less than the deactivate threshold defined
+                    visible = facet.deactivate_threshold <= values.length
+                } else if (facet.type === "range") {
+                    // range facet becomes deactivated if there is a count of 0 in every value
+                    var view = false
+                    for (var i in facet.values) {
+                        var val = facet.values[i]
+                        if (val.count > 0) {
+                            view = true
+                            break
+                        }
+                    }
+                    visible = view
+                } else if (facet.type === "geo_distance") {
+                    // distance facet becomes deactivated if there is a count of 0 in every value
+                    var view = false
+                    for (var i in facet.values) {
+                        var val = facet.values[i]
+                        if (val.count > 0) {
+                            view = true
+                            break
+                        }
+                    }
+                    visible = view
+                }
                 options.behaviour_facet_visibility(options, obj, facet, visible)
             });
         }

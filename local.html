@@ -29,6 +29,13 @@ jQuery(document).ready(function($) {
             q : "Money",
             facets: [
                 {'field': 'price', 'display': 'Price', "type" : "range", "range" : [{"to" : 10, "display" : "less than £10"}, {"from" : 10, "to" : 20, "display" : "£10 - £20"}, {"from" : 20, "to" : 40, "display" : "£20 - £40"}, {"from" : 40, "display" : "£40+"}], "open" : true},
+                {'field' : 'loc', 'display' : 'Distance from me', 'type' : 'geo_distance', 
+                    'unit' : 'mi', 'open' : true, "lat" : 51.533182, "lon" : -0.475996, 
+                    "distance" : [
+                    {"to" : 0.5, "display" : "within 0.5 miles"}, {"to" : 2, "display" : "within 2 miles"}, {"to" : 5, "display" : "within 5 miles"},
+                    {"to" : 10, "display" : "within 10 miles"}, {"to" : 20, "display" : "within 20 miles"}, {"to" : 50, "display" : "within 50 miles"}
+                    ]
+                },
                 {'field': 'subject.exact', 'display': 'Subject', "logic" : "OR", "open" : true},
                 {'field': 'condition.exact', 'display': 'Condition', "logic" : "AND"},
                 {'field': 'year', 'display': 'Publication Year', "size" : 26},
