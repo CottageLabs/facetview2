@@ -196,12 +196,14 @@ function searchOptions(options) {
      * class: facetview_orderby - list of fields which can be ordered by
      * class: facetview_searchfield - list of fields which can be searched on
      * class: facetview_freetext - input field for freetext search
+     * class: facetview_force_search - button which triggers a search on the current page status
      *
      * should (not must) respect the following configs
      *
      * options.search_sortby - list of sort fields and directions
      * options.searchbox_fieldselect - list of fields search can be focussed on
      * options.sharesave_link - whether to provide a copy of a link which can be saved
+     * options.search_button - whether to provide a button to force a search
      */
     
     // initial button group of search controls
@@ -250,8 +252,18 @@ function searchOptions(options) {
     };
     
     // text search box
-    thefacetview += '<input type="text" class="facetview_freetext span4" style="display:inline-block; margin:0 0 21px 0; background:#ecf4ff;" name="q" \
+    var corners = "border-radius:0px 5px 5px 0px; -moz-border-radius:0px 5px 5px 0px; -webkit-border-radius:0px 5px 5px 0px;"
+    if (options.search_button) {
+        corners = "border-radius:0px 0px 0px 0px; -moz-border-radius:0px 0px 0px 0px; -webkit-border-radius:0px 0px 0px 0px;"
+    }
+    thefacetview += '<input type="text" class="facetview_freetext span4" style="display:inline-block; margin:0 0 21px 0; background:#ecf4ff; ' + corners + '" name="q" \
         value="" placeholder="search term" />';
+    
+    // search button
+    if (options.search_button) {
+        thefacetview += "<a class='btn btn-info facetview_force_search' style='margin:0 0 21px 0px; border-radius:0px 5px 5px 0px; \
+            -moz-border-radius:0px 5px 5px 0px; -webkit-border-radius:0px 5px 5px 0px;'><i class='icon-white icon-search'></i></a>"
+    }
     
     // share and save link
     if (options.sharesave_link) {
@@ -262,6 +274,7 @@ function searchOptions(options) {
             <textarea class="facetview_sharesaveurl" style="width:100%;height:100px;">' + shareableUrl(options) + '</textarea> \
             </div>';
     }
+    
     return thefacetview
 }
 
@@ -1619,6 +1632,9 @@ function doElasticSearchQuery(params) {
             // on free-text search, default operator for the elasticsearch query system to use
             "default_operator" : "OR",
             
+            // enable the search button
+            "search_button" : false,
+            
             // amount of time between finishing typing and when a query is executed from the search box
             "freetext_submit_delay" : 500,
             
@@ -2041,6 +2057,14 @@ function doElasticSearchQuery(params) {
         function keyupSearchText(event) {
             event.preventDefault()
             var q = $(this).val()
+            options.q = q
+            doSearch()
+        }
+        
+        // click of the search button
+        function clickSearch() {
+            event.preventDefault()
+            var q = $(".facetview_freetext", obj).val()
             options.q = q
             doSearch()
         }
@@ -2595,6 +2619,7 @@ function doElasticSearchQuery(params) {
                 $('.facetview_searchfield', obj).bind('change', changeSearchField);
                 $('.facetview_sharesave', obj).bind('click', clickShareSave);
                 $('.facetview_freetext', obj).bindWithDelay('keyup', keyupSearchText, options.freetext_submit_delay);
+                $('.facetview_force_search', obj).bind('click', clickSearch);
                 
                 // bind the facet control triggers
                 $('.facetview_filtershow', obj).bind('click', clickFilterShow);
