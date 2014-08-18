@@ -422,6 +422,7 @@ function renderTermsFacetValues(options, facet) {
      *
      * options.selected_filters_in_facet - whether to show selected filters in the facet pull-down (if that's your idiom)
      * options.render_facet_result - function which renders the individual facets
+     * facet.value_function - the value function to be applied to all displayed values
      */
     var selected_filters = options.active_filters[facet.field]
     var frag = ""
@@ -430,6 +431,9 @@ function renderTermsFacetValues(options, facet) {
     if (options.selected_filters_in_facet) {
         for (var i in selected_filters) {
             var value = selected_filters[i]
+            if (facet.value_function) {
+                value = facet.value_function(value)
+            }
             var sf = '<tr class="facetview_filtervalue" style="display:none;"><td>'
             sf += "<strong>" + value + "</strong> "
             sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" data-value="' + value + '" href="' + value + '"><i class="icon-black icon-remove" style="margin-top:1px;"></i></a>'
@@ -626,10 +630,19 @@ function renderTermsFacetResult(options, facet, result, selected_filters) {
      *
      * class: facetview_filtervalue - tags the top level element as being a facet result
      * class: facetview_filterchoice - tags the anchor wrapped around the name of the field
+     *
+     * should (not must) respect the following configuration:
+     *
+     * facet.value_function - the value function to be applied to all displayed values
      */
+    
+    var display = result.term
+    if (facet.value_function) {
+        display = facet.value_function(display)
+    }
     var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
                 '" data-field="' + facet['field'] + '" data-value="' + result.term + '" href="' + result.term + 
-                '"><span class="facetview_filterchoice_text">' + result.term + '</span>' +
+                '"><span class="facetview_filterchoice_text">' + display + '</span>' +
                 '<span class="facetview_filterchoice_count"> (' + result.count + ')</span></a></td></tr>';
     return append
 }
@@ -851,6 +864,7 @@ function renderActiveTermsFilter(options, facet, field, filter_list) {
      *
      * options.show_filter_field - whether to include the name of the field the filter is active on
      * options.show_filter_logic - whether to include AND/OR along with filters
+     * facet.value_function - the value function to be applied to all displayed values
      */
     var clean = safeId(field)
     var display = facet.display ? facet.display : facet.field
@@ -866,6 +880,10 @@ function renderActiveTermsFilter(options, facet, field, filter_list) {
         
     for (var i = 0; i < filter_list.length; i++) {
         var value = filter_list[i]
+        if (facet.value_function) {
+            value = facet.value_function(value)
+        }
+        
         frag += '<a class="facetview_filterselected facetview_clear btn btn-info" data-field="' + field + '" data-value="' + value + '" alt="remove" title="remove" href="' + value + '">'
         frag += '<span class="facetview_filterselected_text">' + value + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
         frag += "</a>"
@@ -1572,6 +1590,7 @@ function doElasticSearchQuery(params) {
                 "order" : "count|reverse_count|term|reverse_term",                  // which standard ordering to use for facet values
                 "deactivate_threshold" : <num>,                                     // number of facet terms below which the facet is disabled
                 "hide_inactive" : true|false,                                       // whether to hide or just disable the facet if below deactivate threshold
+                "value_function" : <function>,                                      // function to be called on each value before display
                 
                 // range facet only
                 
@@ -1872,6 +1891,7 @@ function doElasticSearchQuery(params) {
                 if (!("unit" in facet)) { facet["unit"] = provided_options.default_distance_unit }
                 if (!("lat" in facet)) { facet["lat"] = provided_options.default_distance_lat }
                 if (!("lon" in facet)) { facet["lon"] = provided_options.default_distance_lon }
+                if (!("value_function" in facet)) { facet["value_function"] = function(value) { return value } }
             }
             
             return provided_options

@@ -36,7 +36,7 @@ jQuery(document).ready(function($) {
                     {"to" : 10, "display" : "within 10 miles"}, {"to" : 20, "display" : "within 20 miles"}, {"to" : 50, "display" : "within 50 miles"}
                     ]
                 },
-                {'field': 'subject.exact', 'display': 'Subject', "logic" : "OR", "open" : true},
+                {'field': 'subject.exact', 'display': 'Subject', "logic" : "OR", "open" : true, "value_function" :  function(value) {return value.toUpperCase() } },
                 {'field': 'condition.exact', 'display': 'Condition', "logic" : "AND"},
                 {'field': 'year', 'display': 'Publication Year', "size" : 26},
                 {'field': 'edition.exact', 'display': 'Edition', "order" : "reverse_count", "open" : true},
