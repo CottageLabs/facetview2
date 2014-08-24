@@ -429,16 +429,18 @@ function renderTermsFacetValues(options, facet) {
     
     // first render the active filters
     if (options.selected_filters_in_facet) {
-        for (var i in selected_filters) {
-            var value = selected_filters[i]
-            if (facet.value_function) {
-                value = facet.value_function(value)
+        if (selected_filters) {
+            for (var i=0; i < selected_filters.length; i=i+1) {
+                var value = selected_filters[i]
+                if (facet.value_function) {
+                    value = facet.value_function(value)
+                }
+                var sf = '<tr class="facetview_filtervalue" style="display:none;"><td>'
+                sf += "<strong>" + value + "</strong> "
+                sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" data-value="' + value + '" href="' + value + '"><i class="icon-black icon-remove" style="margin-top:1px;"></i></a>'
+                sf += "</td></tr>"
+                frag += sf
             }
-            var sf = '<tr class="facetview_filtervalue" style="display:none;"><td>'
-            sf += "<strong>" + value + "</strong> "
-            sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" data-value="' + value + '" href="' + value + '"><i class="icon-black icon-remove" style="margin-top:1px;"></i></a>'
-            sf += "</td></tr>"
-            frag += sf
         }
     }
     
@@ -446,7 +448,7 @@ function renderTermsFacetValues(options, facet) {
     var predefined = facet.field in options.predefined_filters ? options.predefined_filters[facet.field] : []
     
     // then render the remaining selectable facets
-    for (var i in facet["values"]) {
+    for (var i=0; i < facet["values"].length; i=i+1) {
         var f = facet["values"][i]
         if (options.exclude_predefined_filters_from_facets && $.inArray(f.term, predefined) > -1) { // note that the datatypes have to match
             continue
@@ -476,7 +478,7 @@ function renderRangeFacetValues(options, facet) {
      */
      
     function getValueForRange(range, values) {
-        for (var i in values) {
+        for (var i=0; i < values.length; i=i+1) {
             var value = values[i]
             
             // the "to"s match if they both value and range have a "to" and they are the same, or if neither have a "to"
@@ -492,7 +494,7 @@ function renderRangeFacetValues(options, facet) {
     }
     
     function getRangeForValue(value, facet) {
-        for (var i in facet.range) {
+        for (var i=0; i < facet.range.length; i=i+1) {
             var range = facet.range[i]
             
             // the "to"s match if they both value and range have a "to" and they are the same, or if neither have a "to"
@@ -529,14 +531,16 @@ function renderRangeFacetValues(options, facet) {
     }
     
     // then render the remaining selectable facets if necessary
-    for (var i in facet["range"]) {
+    for (var i=0; i < facet["range"].length; i=i+1) {
         var r = facet["range"][i]
         var f = getValueForRange(r, facet["values"])
-        if (f.count === 0 && facet.hide_empty_range) {
-            continue
+        if (f) {
+            if (f.count === 0 && facet.hide_empty_range) {
+                continue
+            }
+            var append = options.render_range_facet_result(options, facet, f, r)
+            frag += append
         }
-        var append = options.render_range_facet_result(options, facet, f, r)
-        frag += append
     }
     
     return frag
@@ -558,7 +562,7 @@ function renderGeoFacetValues(options, facet) {
      */
      
     function getValueForRange(range, values) {
-        for (var i in values) {
+        for (var i=0; i < values.length; i=i+1) {
             var value = values[i]
             
             // the "to"s match if they both value and range have a "to" and they are the same, or if neither have a "to"
@@ -574,7 +578,7 @@ function renderGeoFacetValues(options, facet) {
     }
     
     function getRangeForValue(value, facet) {
-        for (var i in facet.distance) {
+        for (var i=0; i < facet.distance.length; i=i+1) {
             var range = facet.distance[i]
             
             // the "to"s match if they both value and range have a "to" and they are the same, or if neither have a "to"
@@ -611,14 +615,16 @@ function renderGeoFacetValues(options, facet) {
     }
     
     // then render the remaining selectable facets if necessary
-    for (var i in facet["distance"]) {
+    for (var i=0; i < facet["distance"].length; i=i+1) {
         var r = facet["distance"][i]
         var f = getValueForRange(r, facet["values"])
-        if (f.count === 0 && facet.hide_empty_distance) {
-            continue
+        if (f) {
+            if (f.count === 0 && facet.hide_empty_distance) {
+                continue
+            }
+            var append = options.render_geo_facet_result(options, facet, f, r)
+            frag += append
         }
-        var append = options.render_geo_facet_result(options, facet, f, r)
-        frag += append
     }
     
     return frag
@@ -913,7 +919,7 @@ function renderActiveRangeFilter(options, facet, field, value) {
      */
     
     function getRangeForValue(value, facet) {
-        for (var i in facet.range) {
+        for (var i=0; i < facet.range.length; i=i+1) {
             var range = facet.range[i]
             
             // the "to"s match if they both value and range have a "to" and they are the same, or if neither have a "to"
@@ -968,7 +974,7 @@ function renderActiveGeoFilter(options, facet, field, value) {
      */
     
     function getRangeForValue(value, facet) {
-        for (var i in facet.distance) {
+        for (var i=0; i < facet.distance.length; i=i+1) {
             var range = facet.distance[i]
             
             // the "to"s match if they both value and range have a "to" and they are the same, or if neither have a "to"
@@ -1136,7 +1142,7 @@ var elasticsearch_distance_units = ["km", "mi", "miles", "in", "inch", "yd", "ya
 function optionsFromQuery(query) {
 
     function stripDistanceUnits(val) {
-        for (var i in elasticsearch_distance_units) {
+        for (var i=0; i < elasticsearch_distance_units.length; i=i+1) {
             var unit = elasticsearch_distance_units[i]
             if (endsWith(val, unit)) {
                 return val.substring(0, val.length - unit.length)
@@ -1182,18 +1188,20 @@ function optionsFromQuery(query) {
             // could be a term query (implies AND on this field)
             if ("term" in clause) {
                 for (var field in clause.term) {
-                    opts["_selected_operators"][field] = "AND"
-                    var value = clause.term[field]
-                    if (!(field in opts["_active_filters"])) {
-                        opts["_active_filters"][field] = []
+                    if (clause.term.hasOwnProperty(field)) {
+                        opts["_selected_operators"][field] = "AND"
+                        var value = clause.term[field]
+                        if (!(field in opts["_active_filters"])) {
+                            opts["_active_filters"][field] = []
+                        }
+                        opts["_active_filters"][field].push(value)
                     }
-                    opts["_active_filters"][field].push(value)
                 }
             }
             
             // could be a terms query (implies OR on this field)
             if ("terms" in clause) {
-                for (var field in clause.terms) {
+                for (var field=0; field < clause.terms.length; field=field+1) {
                     opts["_selected_operators"][field] = "OR"
                     var values = clause.terms[field]
                     if (!(field in opts["_active_filters"])) {
@@ -1205,7 +1213,7 @@ function optionsFromQuery(query) {
             
             // could be a range query
             if ("range" in clause) {
-                for (var field in clause.range) {
+                for (var field=0; field < clause.range.length; field=field+1) {
                     var rq = clause.range[field]
                     var range = {}
                     if (rq.lt) { range["to"] = rq.lt }
@@ -1226,7 +1234,7 @@ function optionsFromQuery(query) {
                 // FIXME: at some point we may need to make this smarter, if we start including other data
                 // in the geo_distance_range filter definition
                 // then we have to go looking for the field name
-                for (var field in gdr) {
+                for (var field=0; field < gdr.length; field=field+1) {
                     if (field === "lt" || field === "gte") { continue }
                     opts["_active_filters"][field] = range
                     break
@@ -1271,7 +1279,7 @@ function elasticSearchQuery(params) {
     
     function termsFilter(facet, filter_list) {
         if (facet.logic === "AND") {
-            for (var i in filter_list) {
+            for (var i=0; i < filter_list.length; i=i+1) {
                 var value = filter_list[i]
                 var tq = {"term" : {}}
                 tq["term"][facet.field] = value
@@ -1304,16 +1312,18 @@ function elasticSearchQuery(params) {
     function makeFilters(filter_definition) {
         var filters = []
         for (var field in filter_definition) {
-            var facet = selectFacet(field)
-            var filter_list = filter_definition[field]
-            
-            if (facet.type === "terms") {
-                filters.push(termsFilter(facet, filter_list))
-            } else if (facet.type === "range") {
-                filters.push(rangeFilter(facet, filter_list))
-            } else if (facet.type == "geo_distance") {
-                filters.push(geoFilter(facet, filter_list))
-            }            
+            if (filter_definition.hasOwnProperty(field)) {
+                var facet = selectFacet(field)
+                var filter_list = filter_definition[field]
+                
+                if (facet.type === "terms") {
+                    filters.push(termsFilter(facet, filter_list))
+                } else if (facet.type === "range") {
+                    filters.push(rangeFilter(facet, filter_list))
+                } else if (facet.type == "geo_distance") {
+                    filters.push(geoFilter(facet, filter_list))
+                }            
+            }
         }
         return filters
     }
@@ -1383,7 +1393,7 @@ function elasticSearchQuery(params) {
                 facet["terms"] = {"field" : defn["field"], "size" : size}
             } else if (defn.type === "range") {
                 var ranges = []
-                for (var r in defn["range"]) {
+                for (var r=0; r < defn["range"].length; r=r+1) {
                     var def = defn["range"][r]
                     var robj = {}
                     if (def.to) { robj["to"] = def.to }
@@ -1397,7 +1407,7 @@ function elasticSearchQuery(params) {
                 facet["geo_distance"][defn["field"]] = [defn.lon, defn.lat] // note that the order is lon/lat because of GeoJSON
                 facet["geo_distance"]["unit"] = defn.unit
                 var ranges = []
-                for (var r in defn["distance"]) {
+                for (var r=0; r < defn["distance"].length; r=r+1) {
                     var def = defn["distance"][r]
                     var robj = {}
                     if (def.to) { robj["to"] = def.to }
@@ -1478,15 +1488,17 @@ function elasticSearchSuccess(callback) {
         }
         
         for (var item in data.facets) {
-            var facet = data.facets[item]
-            // handle any terms facets
-            if ("terms" in facet) {
-                var terms = facet["terms"]
-                resultobj["facets"][item] = terms
-            // handle any range/geo_distance_range facets
-            } else if ("ranges" in facet) {
-                var range = facet["ranges"]
-                resultobj["facets"][item] = range
+            if (data.facets.hasOwnProperty(item)) {
+                var facet = data.facets[item]
+                // handle any terms facets
+                if ("terms" in facet) {
+                    var terms = facet["terms"]
+                    resultobj["facets"][item] = terms
+                // handle any range/geo_distance_range facets
+                } else if ("ranges" in facet) {
+                    var range = facet["ranges"]
+                    resultobj["facets"][item] = range
+                }
             }
         }
             
@@ -1837,11 +1849,13 @@ function doElasticSearchQuery(params) {
             // for each pre-selected operator, find the related facet and set its "logic" property
             var so = provided_options._selected_operators ? provided_options._selected_operators : {}
             for (var field in so) {
-                var operator = so[field]
-                for (var i in provided_options.facets) {
-                    var facet = provided_options.facets[i]
-                    if (facet.field === field) {
-                        facet["logic"] = operator
+                if (so.hasOwnProperty(field)) {
+                    var operator = so[field]
+                    for (var i=0; i < provided_options.facets.length; i=i+1) {
+                        var facet = provided_options.facets[i]
+                        if (facet.field === field) {
+                            facet["logic"] = operator
+                        }
                     }
                 }
             }
@@ -1856,28 +1870,30 @@ function doElasticSearchQuery(params) {
             } else {
                 provided_options["active_filters"] = {}
                 for (var field in provided_options._active_filters) {
-                    var filter_list = provided_options._active_filters[field]
-                    provided_options["active_filters"][field] = []
-                    if (!(field in provided_options.predefined_filters)) {
-                        provided_options["active_filters"][field] = filter_list
-                    } else {
-                        // FIXME: this does not support pre-defined range queries
-                        var predefined_values = provided_options.predefined_filters[field]
-                        for (var i in filter_list) {
-                            var value = filter_list[i]
-                            if ($.inArray(value, predefined_values) === -1) {
-                                provided_options["active_filters"][field].push(value)
+                    if (provided_options._active_filters.hasOwnProperty(field)) {
+                        var filter_list = provided_options._active_filters[field]
+                        provided_options["active_filters"][field] = []
+                        if (!(field in provided_options.predefined_filters)) {
+                            provided_options["active_filters"][field] = filter_list
+                        } else {
+                            // FIXME: this does not support pre-defined range queries
+                            var predefined_values = provided_options.predefined_filters[field]
+                            for (var i=0; i < filter_list.length; i=i+1) {
+                                var value = filter_list[i]
+                                if ($.inArray(value, predefined_values) === -1) {
+                                    provided_options["active_filters"][field].push(value)
+                                }
                             }
                         }
-                    }
-                    if (provided_options["active_filters"][field].length === 0) {
-                        delete provided_options["active_filters"][field]
+                        if (provided_options["active_filters"][field].length === 0) {
+                            delete provided_options["active_filters"][field]
+                        }
                     }
                 }
             }
             
             // copy in the defaults to the individual facets when they are needed
-            for (var i in provided_options.facets) {
+            for (var i=0; i < provided_options.facets.length; i=i+1) {
                 var facet = provided_options.facets[i]
                 if (!("type" in facet)) { facet["type"] = provided_options.default_facet_type }
                 if (!("open" in facet)) { facet["open"] = provided_options.default_facet_open }
@@ -1908,9 +1924,10 @@ function doElasticSearchQuery(params) {
             // set the search order
             // NOTE: that this interface only supports single field ordering
             sorting = options.sort
-            for (var i in sorting) {
+
+            for (var i=0; i < sorting.length; i=i+1) {
                 var so = sorting[i]
-                for (var field in so) {
+                for (var field=0; field < so.length; field=field+1) {
                     var dir = so[field]["order"]
                     setUIOrder({order: dir})
                     setUIOrderBy({orderby: field})
@@ -1926,7 +1943,7 @@ function doElasticSearchQuery(params) {
             setUISearchString({q: options.q})
             
             // for each facet, set the facet size, order and and/or status
-            for (var i in options.facets) {
+            for (var i=0; i < options.facets.length; i=i+1) {
                 var f = options.facets[i]
                 setUIFacetSize({facet : f})
                 setUIFacetSort({facet : f})
@@ -2346,14 +2363,16 @@ function doElasticSearchQuery(params) {
         function setUISelectedFilters() {
             var frag = ""
             for (var field in options.active_filters) {
-                var filter_list = options.active_filters[field]
-                var facet = selectFacet(field)
-                if (facet.type === "terms") {
-                    frag += options.render_active_terms_filter(options, facet, field, filter_list)
-                } else if (facet.type === "range") {
-                    frag += options.render_active_range_filter(options, facet, field, filter_list)
-                } else if (facet.type === "geo_distance") {
-                    frag += options.render_active_geo_filter(options, facet, field, filter_list)
+                if (options.active_filters.hasOwnProperty(field)) {
+                    var filter_list = options.active_filters[field]
+                    var facet = selectFacet(field)
+                    if (facet.type === "terms") {
+                        frag += options.render_active_terms_filter(options, facet, field, filter_list)
+                    } else if (facet.type === "range") {
+                        frag += options.render_active_range_filter(options, facet, field, filter_list)
+                    } else if (facet.type === "geo_distance") {
+                        frag += options.render_active_geo_filter(options, facet, field, filter_list)
+                    }
                 }
             }
             
@@ -2404,7 +2423,7 @@ function doElasticSearchQuery(params) {
                 } else if (facet.type === "range") {
                     // range facet becomes deactivated if there is a count of 0 in every value
                     var view = false
-                    for (var i in facet.values) {
+                    for (var i=0; i < facet.values.length; i=i+1) {
                         var val = facet.values[i]
                         if (val.count > 0) {
                             view = true
@@ -2415,7 +2434,7 @@ function doElasticSearchQuery(params) {
                 } else if (facet.type === "geo_distance") {
                     // distance facet becomes deactivated if there is a count of 0 in every value
                     var view = false
-                    for (var i in facet.values) {
+                    for (var i=0; i < facet.values.length; i=i+1) {
                         var val = facet.values[i]
                         if (val.count > 0) {
                             view = true
