@@ -100,7 +100,11 @@ function theReportview(options) {
      */
 
     // the reportview object to be appended to the page
-    var thereportview = '<div class="reportview"><svg></svg></div>';
+    var thereportview = '<div class="reportview"><svg></svg>'
+    if (options.debug) {
+        thereportview += "<div class='reportview_debug'><textarea style='width: 100%; height: 200px'></textarea></div>"
+    }
+    thereportview += '</div>';
     return thereportview
 }
 
@@ -286,6 +290,9 @@ function renderMultiBar(params) {
             // should take the form of a set of query elements that can be appended directly
             // to the must filter
             "fixed_filters" : false,
+            
+            // size of result set
+            "page_size" : 0,
             
             ///// internal state monitoring /////////////////////////////
             

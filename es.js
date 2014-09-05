@@ -243,10 +243,10 @@ function elasticSearchQuery(params) {
     }
     
     // paging (number of results, and start cursor)
-    if (options.from) {
+    if (options.from !== undefined) {
         qs["from"] = options.from
     }
-    if (options.page_size) {
+    if (options.page_size !== undefined) {
         qs["size"] = options.page_size
     }
     

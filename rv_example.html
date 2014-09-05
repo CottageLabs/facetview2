@@ -101,6 +101,7 @@ jQuery(document).ready(function($) {
     
     $('#report-view-bar-facet').each(function() {
         $(this).report({
+            debug: true,
             type: "multibar",
             search_url: "http://localhost:9200/doaj/article/_search",
             facets: [
