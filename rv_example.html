@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>ReportView</title>
+
+    <script type="text/javascript" src="vendor/jquery/1.7.1/jquery-1.7.1.min.js"></script>
+
+    <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+    <script type="text/javascript" src="vendor/bootstrap/js/bootstrap.min.js"></script>  
+
+    <link rel="stylesheet" href="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.css">
+    <script type="text/javascript" src="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.min.js"></script>
+
+    <!-- get d3 -->
+    <script type="text/javascript" src="vendor/d3/d3.v2.js"></script>
+
+    <!-- nvd3 stuff -->
+    <script type="text/javascript" src="vendor/nvd3/fisheye.js"></script>
+    <script type="text/javascript" src="vendor/nvd3/nv.d3.js"></script>
+    <link rel="stylesheet" href="vendor/nvd3/nv.d3.css">
+
+    <!-- note that we require both es.js and the reportview -->
+    <script type="text/javascript" src="es.js"></script>
+    <script type="text/javascript" src="jquery.reportview.js"></script>
+
+    <!-- <link rel="stylesheet" href="css/facetview.css"> -->
+
+  <script type="text/javascript">
+jQuery(document).ready(function($) {
+    $('#report-view-pie-series').each(function() {
+        $(this).report({
+            type: "pie",
+            pie_donut: false,
+            pie_transition_duration: 100,
+            pie_show_labels: true,
+            pie_label_threshold: 0.1,
+            data_series : [
+                {
+                    "key" : "Fibbonacci", 
+                    "values" : [
+                        {"label" : "first", "value" : 1}, 
+                        {"label" : "second", "value" : 1},
+                        {"label" : "third", "value" : 2},
+                        {"label" : "fourth", "value" : 3},
+                        {"label" : "fifth", "value" : 5},
+                        {"label" : "sixth", "value" : 8},
+                        {"label" : "seventh", "value" : 13}
+                    ]
+                }
+            ]
+        });
+    });
+    
+    $('#report-view-pie-function').each(function() {
+        function powers_of_two() {
+            data_series = [
+                {
+                    "key" : "", 
+                    "values" : [
+                        {"label" : "two", "value" : 2}, 
+                        {"label" : "four", "value" : 4},
+                        {"label" : "eight", "value" : 8},
+                        {"label" : "sixteen", "value" : 16},
+                        {"label" : "thirty two", "value" : 32},
+                        {"label" : "sixty four", "value" : 64},
+                        {"label" : "one twenty eight", "value" : 128}
+                    ]
+                }
+            ]
+            return data_series
+        }
+        $(this).report({
+            type: "pie",
+            pie_donut: true,
+            pie_transition_duration: 800,
+            pie_show_labels: true,
+            pie_label_threshold: 0.05,
+            data_function: powers_of_two,
+            //facets: [
+            //    {
+            //        "field" : "bibjson.license.type.exact",
+            //        "size" : 100,
+            //        "display" : "Licence Type"
+            //    }
+            //]
+        });
+    });
+});
+  </script>
+
+<style type="text/css">
+#report-view-pie-series {
+    width:600px;
+    height:400px;
+    margin:20px auto 0 auto;
+}
+#report-view-pie-series .reportview {
+    height: 365px;
+}
+
+#report-view-pie-function {
+    width:600px;
+    height:400px;
+    margin:20px auto 0 auto;
+}
+#report-view-pie-function .reportview {
+    height: 365px;
+}
+</style>
+
+</head>
+<body>
+
+    <div id="report-view-pie-series"></div>
+    <div id="report-view-pie-function"></div>
+
+</body>
+</html>
