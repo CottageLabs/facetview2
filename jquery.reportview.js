@@ -124,25 +124,8 @@ function renderPie(params) {
     var be_donut = options.pie_donut
     var transition_duration = options.pie_transition_duration
     
-    //var label_field = params.label_field
-    //var value_field = params.value_field
-    
-    //var name = params["name"]
-    
-    //var datums = []
-    //var pie = {"key" : name, "values" : []}
-    
-    //for (var i = 0; i < data.length; i++) {
-    //    var helping = {}
-    //    helping["label"] = data[i][label_field]
-    //    helping["value"] = data[i][value_field]
-    //    pie.values.push(helping)
-    //}
-    //datums.push(pie)
-    
     // set the space up for the new chart
     $(selector, context).empty()
-    // $(selector, context).css("height", "365px")
     
     // generate the pie
     nv.addGraph(function() {
@@ -162,6 +145,51 @@ function renderPie(params) {
     });
 }
 
+function convertMultiBar(params) {
+    var series = params.data_series
+    var new_series = []
+    for (var i = 0; i < series.length; i++) {
+        var os = series[i]
+        var ns = {}
+        ns["key"] = os["key"]
+        ns["values"] = []
+        for (var j = 0; j < os.values.length; j++) {
+            var vector = os.values[j]
+            ns["values"].push({x : vector.label, y : vector.value})
+        }
+        new_series.push(ns)
+    }
+    return new_series
+}
+
+function renderMultiBar(params) {
+    var context = params.context
+    var data_series = params.data_series
+    var selector = params.svg_selector
+    var options = params.options
+    
+    var y_tick_format = params.multibar_y_tick_format
+    var transition_duration = params.multibar_transition_duration
+    
+    // set the space up for the new chart
+    $(selector, context).empty()
+    
+    nv.addGraph(function() {
+        var chart = nv.models.multiBarChart()
+
+        chart.yAxis
+            .tickFormat(d3.format(y_tick_format));
+
+        d3.select(selector)
+          .datum(data_series)
+          .transition().duration(transition_duration).call(chart);
+
+        nv.utils.windowResize(chart.update);
+
+        return chart;
+    });
+}
+
 /******************************************************************
  * REPORT VIEW
  *****************************************************************/
@@ -169,6 +197,9 @@ function renderPie(params) {
 (function($){
     $.fn.report = function(options) {
         var defaults = {
+            // debug on or off
+            "debug" : false,
+            
             // type of graph to draw
             "type" : "pie",
             
@@ -176,16 +207,99 @@ function renderPie(params) {
             "render_the_reportview" : theReportview,
             
             // convert/render functions for pie chart
-            "render_pie" : renderPie,
-            "convert_pie" : convertDataPie,
+            "pie_render" : renderPie,
+            "pie_convert" : convertDataPie,
             "pie_show_labels" : true,
             "pie_label_threshold" : 0.05,
             "pie_donut" : true,
             "pie_transition_duration" : 500,
             
+            // convert/render functions for multi-bar chart
+            "multibar_render" : renderMultiBar,
+            "multibar_convert" : convertMultiBar,
+            "multibar_y_tick_format" : ',.0f',
+            "multibar_transition_duration" : 500,
+            
             // data from which to build the graph
             "data_series" : false,
-            "data_function" : false
+            "data_function" : false,
+            
+            ///// facet aspects /////////////////////////////
+            
+            // the base search url which will respond to elasticsearch queries.  Generally ends with _search
+            "search_url" : "http://localhost:9200/_search",
+            
+            // datatype for ajax requests to use - overall recommend using jsonp
+            "datatype" : "jsonp",
+            
+            // due to a bug in elasticsearch's clustered node facet counts, we need to inflate
+            // the number of facet results we need to ensure that the results we actually want are
+            // accurate.  This option tells us by how much.
+            "elasticsearch_facet_inflation" : 100,
+            
+            // The list of facets to be displayed and used to seed the filtering processes.
+            // Facets are complex fields which can look as follows:
+            /*
+            {
+                "field" : "<elasticsearch field>"                                   // field upon which to facet
+                "display" : "<display name>",                                       // display name for the UI
+                "type": "term|range|geo_distance",                                  // the kind of facet this will be
+                
+                // terms facet only
+                
+                "size" : <num>,                                                     // how many terms should the facet limit to
+                "order" : "count|reverse_count|term|reverse_term",                  // which standard ordering to use for facet values
+                "value_function" : <function>,                                      // function to be called on each value before display
+                
+                // range facet only
+                
+                "range" : [                                                         // list of ranges (in order) which define the filters
+                    {"from" : <num>, "to" : <num>, "display" : "<display name>"}    // from = lower bound (inclusive), to = upper boud (exclusive)
+                ],                                                                  // display = display name for this range
+                
+                // geo distance facet only
+                
+                "distance" : [                                                      // list of distances (in order) which define the filters
+                    {"from" : <num>, "to" : <num>, "display" : "<display name>"}    // from = lower bound (inclusive), to = upper boud (exclusive)
+                ],                                                                  // display = display name for this distance
+                "unit" : "<unit of distance, e.g. km or mi>"                        // unit to calculate distances in (e.g. km or mi)
+                "lat" : <latitude>                                                  // latitude from which to measure distances
+                "lon" : <longitude>                                                 // longitude from which to measure distances
+                
+                // admin use only
+                
+                "values" : <object>                                                 // the values associated with a successful query on this facet
+            }
+            */
+            "facets" : [],
+            
+            // default settings for each of the facet properties above.  If a facet lacks a property, it will
+            // be initialised to the default
+            "default_facet_type" : "terms",
+            "default_facet_size" : 10,
+            "default_facet_order" : "count",
+            "default_distance_unit" : "km",
+            "default_distance_lat" : 51.4768,       // Greenwich meridian (give or take a few decimal places)
+            "default_distance_lon" : 0.0,           //
+            
+            // list of filters that will be added to the "must" boolean filter for every request
+            // should take the form of a set of query elements that can be appended directly
+            // to the must filter
+            "fixed_filters" : false,
+            
+            ///// internal state monitoring /////////////////////////////
+            
+            // these are used internally DO NOT USE
+            // they are here for completeness and documentation
+            
+            // the raw query object
+            "queryobj" : false,
+            
+            // the raw data coming back from elasticsearch
+            "rawdata" : false,
+            
+            // the parsed data from elasticsearch
+            "data" : false
         }
         
         function deriveOptions() {
@@ -196,15 +310,97 @@ function renderPie(params) {
             // extend the defaults with the provided options
             var provided_options = $.extend(defaults, options);
             
+            // copy in the defaults to the individual facets when they are needed
+            for (var i=0; i < provided_options.facets.length; i=i+1) {
+                var facet = provided_options.facets[i]
+                if (!("type" in facet)) { facet["type"] = provided_options.default_facet_type }
+                if (!("size" in facet)) { facet["size"] = provided_options.default_facet_size }
+                if (!("order" in facet)) { facet["order"] = provided_options.default_facet_order }
+                if (!("unit" in facet)) { facet["unit"] = provided_options.default_distance_unit }
+                if (!("lat" in facet)) { facet["lat"] = provided_options.default_distance_lat }
+                if (!("lon" in facet)) { facet["lon"] = provided_options.default_distance_lon }
+                if (!("value_function" in facet)) { facet["value_function"] = function(value) { return value } }
+            }
+            
             return provided_options
+        }
+        
+        /******************************************************************
+         * DEBUG
+         *****************************************************************/
+
+        function addDebug(msg, context) {
+            $(".reportview_debug", context).show().find("textarea").append(msg + "\n\n")
         }
         
         /**************************************************************
          * DATA FUNCTIONS
          *************************************************************/
         
-        function simpleDataSeries() {
-            return options.data_series
+        function simpleDataSeries(callback) {
+            callback(options.data_series)
+        }
+        
+        function facetDataSeries(callback) {
+            // make the search query
+            var queryobj = elasticSearchQuery({"options" : options});
+            options.queryobj = queryobj
+            if (options.debug) {
+                var querystring = serialiseQueryObject(queryobj)
+                addDebug(querystring)
+            }
+            
+            function querySuccess(rawdata, results) {
+                if (options.debug) {
+                    addDebug(JSON.stringify(rawdata))
+                    addDebug(JSON.stringify(results))
+                }
+                
+                // record the data coming from elasticsearch
+                options.rawdata = rawdata;
+                options.data = results;
+                
+                // for each facet, get the results and add them to the options
+                var data_series = []
+                for (var each = 0; each < options.facets.length; each++) {
+                    // get the facet, the field name and the size
+                    var facet = options.facets[each]
+                    var field = facet['field'];
+                    var size = facet["size"] ? facet["size"] : options.default_facet_size
+                    
+                    // get the records to be displayed, limited by the size and record against
+                    // the options object
+                    var records = results["facets"][field];
+                    if (!records) { records = [] }
+                    facet["values"] = records.slice(0, size)
+                    
+                    // now convert the facet values into the data series
+                    var series = {}
+                    series["key"] = facet["display"]
+                    series["values"] = []
+                    for (var i = 0; i < facet["values"].length; i++) {
+                        var result = facet["values"][i]
+                        var display = result.term
+                        if (facet.value_function) {
+                            display = facet.value_function(display)
+                        }
+                        series.values.push({"label" : display, "value" : result.count})
+                    }
+                    data_series.push(series)
+                }
+                
+                // finally, hit the callback
+                callback(data_series)
+            }
+            
+            // issue the query to elasticsearch
+            doElasticSearchQuery({
+                search_url: options.search_url,
+                queryobj: queryobj,
+                datatype: options.datatype,
+                success: querySuccess //,
+                // complete: queryComplete
+            })
         }
         
         /**************************************************************
@@ -229,26 +425,43 @@ function renderPie(params) {
                 obj.append(thereportview)
                 
                 // determine the correct data function
+                
+                // if there is a data function provided, use it
                 var data_function = options.data_function
+                
+                // if there is no data function provided, but facets are defined, use them
+                if (!data_function) {
+                    if (options.facets.length > 0) {
+                        data_function = facetDataSeries
+                    }
+                }
+                
+                // if still no data function, then fall back to simple data series
                 if (!data_function) {
                     data_function = simpleDataSeries
                 }
                 
                 // get the convert and render functions
-                var render = "render_" + options.type
-                var convert = "convert_" + options.type
+                var render = options.type + "_render"
+                var convert = options.type + "_convert"
                 var renderFn = options[render]
                 var convertFn = options[convert]
                 
-                // execute the data function
-                var data_series = data_function()
-                var series = options[convert]({"data_series" : data_series})
-                options[render]({
-                    "context" : obj,
-                    "data_series" : series,
-                    "svg_selector" : "#" + element_id + " .reportview svg",
-                    "options" : options
-                })
+                // execute the data function and send it the chain to process after
+                function onwardClosure(convertFn, renderFn) {
+                    function onward(data_series) {
+                        var series = convertFn({"data_series" : data_series})
+                        renderFn({
+                            "context" : obj,
+                            "data_series" : series,
+                            "svg_selector" : "#" + element_id + " .reportview svg",
+                            "options" : options
+                        })
+                    }
+                    return onward
+                }
+                data_function(onwardClosure(convertFn, renderFn))
+                
             }
             whenready();
         });

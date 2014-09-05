@@ -1301,6 +1301,7 @@ function getUrlVars() {
             // a set of pre-defined filters which will always be applied to the search.
             // Has the following structure, and works for terms filters only
             // { "<field>" : ["<list of values>"] }
+            // requires a facet for the given field to be defined
             "predefined_filters" : {},
             
             // exclude any values that appear in pre-defined filters from any facets

@@ -53,8 +53,8 @@ jQuery(document).ready(function($) {
     });
     
     $('#report-view-pie-function').each(function() {
-        function powers_of_two() {
-            data_series = [
+        function powers_of_two(callback) {
+            var data_series = [
                 {
                     "key" : "", 
                     "values" : [
@@ -68,7 +68,7 @@ jQuery(document).ready(function($) {
                     ]
                 }
             ]
-            return data_series
+            callback(data_series)
         }
         $(this).report({
             type: "pie",
@@ -76,14 +76,50 @@ jQuery(document).ready(function($) {
             pie_transition_duration: 800,
             pie_show_labels: true,
             pie_label_threshold: 0.05,
-            data_function: powers_of_two,
-            //facets: [
-            //    {
-            //        "field" : "bibjson.license.type.exact",
-            //        "size" : 100,
-            //        "display" : "Licence Type"
-            //    }
-            //]
+            data_function: powers_of_two
+        });
+    });
+    
+    $('#report-view-pie-facet').each(function() {
+        $(this).report({
+            type: "pie",
+            pie_donut: true,
+            pie_transition_duration: 800,
+            pie_show_labels: true,
+            pie_label_threshold: 0.05,
+            search_url: "http://localhost:9200/doaj/article/_search",
+            facets: [
+                {
+                    "field" : "bibjson.license.type.exact",
+                    "size" : 100,
+                    "display" : "Licence Type",
+                    "value_function" : function(value) { return value.toUpperCase() }
+                }
+            ]
+        });
+    });
+    
+    $('#report-view-bar-facet').each(function() {
+        $(this).report({
+            type: "multibar",
+            search_url: "http://localhost:9200/doaj/article/_search",
+            facets: [
+                {
+                    "field" : "bibjson.license.type.exact",
+                    "size" : 100,
+                    "display" : "Article Licence",
+                    "value_function" : function(value) { return value.toLowerCase().replace(/-/g, " ") }
+                },
+                {
+                    "field" : "bibjson.journal.license.type.exact",
+                    "size" : 100,
+                    "display" : "Journal Licence",
+                    "value_function" : function(value) { return value.toLowerCase().replace(/-/g, " ") }
+                }
+            ],
+            fixed_filters: [
+                {"term" : {"bibjson.journal.country.exact" : "GB"}}
+            ]
         });
     });
 });
@@ -93,7 +129,6 @@ jQuery(document).ready(function($) {
 #report-view-pie-series {
     width:600px;
     height:400px;
-    margin:20px auto 0 auto;
 }
 #report-view-pie-series .reportview {
     height: 365px;
@@ -102,9 +137,24 @@ jQuery(document).ready(function($) {
 #report-view-pie-function {
     width:600px;
     height:400px;
-    margin:20px auto 0 auto;
 }
 #report-view-pie-function .reportview {
+    height: 365px;
+}
+
+#report-view-pie-facet {
+    width:600px;
+    height:400px;
+}
+#report-view-pie-facet .reportview {
+    height: 365px;
+}
+
+#report-view-bar-facet {
+    width:600px;
+    height:400px;
+}
+#report-view-bar-facet .reportview {
     height: 365px;
 }
 </style>
@@ -112,8 +162,23 @@ jQuery(document).ready(function($) {
 </head>
 <body>
 
-    <div id="report-view-pie-series"></div>
-    <div id="report-view-pie-function"></div>
+<div class="row-fluid">
+    <div class="span6">
+        <div id="report-view-pie-series"></div>
+    </div>
+    <div class="span6">
+        <div id="report-view-pie-function"></div>
+    </div>
+</div>
+
+<div class="row-fluid">
+    <div class="span6">
+        <div id="report-view-pie-facet"></div>
+    </div>
+    <div class="span6">
+        <div id="report-view-bar-facet"></div>
+    </div>
+</div>
 
 </body>
 </html>

@@ -196,8 +196,15 @@ function elasticSearchQuery(params) {
     // read any filters out of the options and create an array of "must" queries which 
     // will constrain the search results
     var filter_must = []
-    filter_must = filter_must.concat(makeFilters(options.active_filters))
-    filter_must = filter_must.concat(makeFilters(options.predefined_filters))
+    if (options.active_filters) {
+        filter_must = filter_must.concat(makeFilters(options.active_filters))
+    }
+    if (options.predefined_filters) {
+        filter_must = filter_must.concat(makeFilters(options.predefined_filters))
+    }
+    if (options.fixed_filters) {
+        filter_must = filter_must.concat(options.fixed_filters)
+    }
     
     // search string and search field produce a query_string query element
     var querystring = options.q
@@ -227,7 +234,7 @@ function elasticSearchQuery(params) {
     }
     
     // sort order and direction
-    options.sort.length > 0 ? qs['sort'] = options.sort : "";
+    options.sort && options.sort.length > 0 ? qs['sort'] = options.sort : "";
     
     // fields and partial fields
     if (include_fields) {
@@ -286,7 +293,9 @@ function elasticSearchQuery(params) {
         
         // and any extra facets
         // NOTE: this does not include any treatment of the facet size inflation that may be required
-        $.extend(true, qs['facets'], options.extra_facets );
+        if (options.extra_facets) {
+            $.extend(true, qs['facets'], options.extra_facets );
+        }
     }
     
     return qs
