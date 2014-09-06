@@ -24,8 +24,6 @@
     <script type="text/javascript" src="es.js"></script>
     <script type="text/javascript" src="jquery.reportview.js"></script>
 
-    <!-- <link rel="stylesheet" href="css/facetview.css"> -->
-
   <script type="text/javascript">
 jQuery(document).ready(function($) {
     $('#report-view-pie-series').each(function() {
@@ -48,7 +46,10 @@ jQuery(document).ready(function($) {
                         {"label" : "seventh", "value" : 13}
                     ]
                 }
-            ]
+            ] //,
+            //post_init_callback: function(options, context) { alert("post init")},
+            //pre_render_callback: function(options, context) { alert("pre render")},
+            //post_render_callback: function(options, context) { alert("post render")}
         });
     });
     

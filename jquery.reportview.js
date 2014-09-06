@@ -85,6 +85,15 @@ function ie8compat(o) {
 }
 
 /******************************************************************
+ * DEFAULT CALLBACKS AND PLUGINS
+ *****************************************************************/
+ 
+///// the lifecycle callbacks ///////////////////////
+function postInit(options, context) {}
+function preRender(options, context) {}
+function postRender(options, context) {}
+
+/******************************************************************
  * DEFAULT RENDER FUNCTIONS
  ******************************************************************/
 
@@ -294,6 +303,14 @@ function renderMultiBar(params) {
             // size of result set
             "page_size" : 0,
             
+            ///// lifecycle callbacks /////////////////////////////
+            
+            // the default callbacks don't have any effect - replace them as needed
+            
+            "post_init_callback" : postInit,
+            "pre_render_callback" : preRender,
+            "post_render_callback" : postRender,
+            
             ///// internal state monitoring /////////////////////////////
             
             // these are used internally DO NOT USE
@@ -431,6 +448,11 @@ function renderMultiBar(params) {
             var whenready = function() {
                 obj.append(thereportview)
                 
+                // if a post initialisation callback is provided, run it
+                if (typeof options.post_init_callback === 'function') {
+                    options.post_init_callback(options, obj);
+                }
+                
                 // determine the correct data function
                 
                 // if there is a data function provided, use it
@@ -457,6 +479,12 @@ function renderMultiBar(params) {
                 // execute the data function and send it the chain to process after
                 function onwardClosure(convertFn, renderFn) {
                     function onward(data_series) {
+                        // if a pre render callback is provided, run it
+                        if (typeof options.pre_render_callback === 'function') {
+                            options.pre_render_callback(options, obj);
+                        }
+                        
+                        // convert and render the series
                         var series = convertFn({"data_series" : data_series})
                         renderFn({
                             "context" : obj,
@@ -464,6 +492,11 @@ function renderMultiBar(params) {
                             "svg_selector" : "#" + element_id + " .reportview svg",
                             "options" : options
                         })
+                        
+                        // if a post render callback is provided, run it
+                        if (typeof options.post_render_callback === 'function') {
+                            options.post_render_callback(options, obj);
+                        }
                     }
                     return onward
                 }
