@@ -203,6 +203,40 @@ function renderMultiBar(params) {
     });
 }
 
+function convertHorizontalMultiBar(params) {
+    var data_series = params.data_series
+    return data_series
+}
+
+function renderHorizontalMultiBar(params) {
+    var context = params.context
+    var data_series = params.data_series
+    var selector = params.svg_selector
+    var options = params.options
+    
+    nv.addGraph(function() {
+        var chart = nv.models.multiBarHorizontalChart()
+            .x(function(d) { return d.label })
+            .y(function(d) { return d.value })
+            // .margin({top: 30, right: 20, bottom: 50, left: 175})
+            .showValues(true)
+            .tooltips(false)
+            .showControls(false);
+
+        chart.yAxis
+            .tickFormat(d3.format(',.2f'));
+
+        d3.select(selector)
+            .datum(data_series)
+            .transition().duration(500)
+            .call(chart);
+
+        nv.utils.windowResize(chart.update);
+
+        return chart;
+    });
+}
+
 /******************************************************************
  * REPORT VIEW
  *****************************************************************/
@@ -214,6 +248,7 @@ function renderMultiBar(params) {
             "debug" : false,
             
             // type of graph to draw
+            // values: pie, multibar, horizontal_multibar
             "type" : "pie",
             
             // render the frame within which the reportview sits
@@ -232,6 +267,10 @@ function renderMultiBar(params) {
             "multibar_convert" : convertMultiBar,
             "multibar_y_tick_format" : ',.0f',
             "multibar_transition_duration" : 500,
+            
+            // convert/render functions for horizontal bar chart
+            "horizontal_multibar_render" : renderHoriztonalMultiBar,
+            "horizontal_multibar_convert" : convertHorizontalMultiBar,
             
             // data from which to build the graph
             "data_series" : false,
@@ -470,6 +509,9 @@ function renderMultiBar(params) {
                     data_function = simpleDataSeries
                 }
                 
+                // now set the data function on the options object, so it can be accessed elsewhere
+                options.data_function = data_function
+                
                 // get the convert and render functions
                 var render = options.type + "_render"
                 var convert = options.type + "_convert"
@@ -479,6 +521,9 @@ function renderMultiBar(params) {
                 // execute the data function and send it the chain to process after
                 function onwardClosure(convertFn, renderFn) {
                     function onward(data_series) {
+                        // record the data series
+                        options.data_series = data_series
+                        
                         // if a pre render callback is provided, run it
                         if (typeof options.pre_render_callback === 'function') {
                             options.pre_render_callback(options, obj);
