@@ -124,12 +124,9 @@ function optionsFromQuery(query) {
     }
 }
 
-function elasticSearchQuery(params) {
-    // break open the parameters
+function getFilters(params) {
     var options = params.options
-    var include_facets = "include_facets" in params ? params.include_facets : true
-    var include_fields = "include_fields" in params ? params.include_fields : true
-    
+
     // function to get the right facet from the options, based on the name
     function selectFacet(name) {
         for (var i = 0; i < options.facets.length; i++) {
@@ -141,7 +138,7 @@ function elasticSearchQuery(params) {
             }
         }
     }
-    
+
     function termsFilter(facet, filter_list) {
         if (facet.logic === "AND") {
             for (var i=0; i < filter_list.length; i=i+1) {
@@ -156,7 +153,7 @@ function elasticSearchQuery(params) {
             return tq
         }
     }
-    
+
     function rangeFilter(facet, value) {
         var rq = {"range" : {}}
         rq["range"][facet.field] = {}
@@ -164,7 +161,7 @@ function elasticSearchQuery(params) {
         if (value.from) { rq["range"][facet.field]["gte"] = value.from }
         return rq
     }
-    
+
     function geoFilter(facet, value) {
         var gq = {"geo_distance_range" : {}}
         if (value.to) { gq["geo_distance_range"]["lt"] = value.to + facet.unit }
@@ -172,7 +169,7 @@ function elasticSearchQuery(params) {
         gq["geo_distance_range"][facet.field] = [facet.lon, facet.lat] // note the order of lon/lat to comply with GeoJSON
         return gq
     }
-    
+
     // function to make the relevant filters from the filter definition
     function makeFilters(filter_definition) {
         var filters = []
@@ -180,20 +177,20 @@ function elasticSearchQuery(params) {
             if (filter_definition.hasOwnProperty(field)) {
                 var facet = selectFacet(field)
                 var filter_list = filter_definition[field]
-                
+
                 if (facet.type === "terms") {
                     filters.push(termsFilter(facet, filter_list))
                 } else if (facet.type === "range") {
                     filters.push(rangeFilter(facet, filter_list))
                 } else if (facet.type == "geo_distance") {
                     filters.push(geoFilter(facet, filter_list))
-                }            
+                }
             }
         }
         return filters
     }
-    
-    // read any filters out of the options and create an array of "must" queries which 
+
+    // read any filters out of the options and create an array of "must" queries which
     // will constrain the search results
     var filter_must = []
     if (options.active_filters) {
@@ -205,7 +202,18 @@ function elasticSearchQuery(params) {
     if (options.fixed_filters) {
         filter_must = filter_must.concat(options.fixed_filters)
     }
-    
+
+    return filter_must
+}
+
+function elasticSearchQuery(params) {
+    // break open the parameters
+    var options = params.options
+    var include_facets = "include_facets" in params ? params.include_facets : true
+    var include_fields = "include_fields" in params ? params.include_fields : true
+
+    var filter_must = getFilters({"options" : options})
+
     // search string and search field produce a query_string query element
     var querystring = options.q
     var searchfield = options.searchfield
