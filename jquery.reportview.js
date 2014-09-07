@@ -213,22 +213,27 @@ function renderHorizontalMultiBar(params) {
     var data_series = params.data_series
     var selector = params.svg_selector
     var options = params.options
+
+    var show_values = options.horizontal_multibar_show_values
+    var tool_tips = options.horizontal_multibar_tool_tips
+    var controls = options.horizontal_multibar_controls
+    var y_tick_format = options.horizontal_multibar_y_tick_format
+    var transition_duration = options.horizontal_multibar_transition_duration
     
     nv.addGraph(function() {
         var chart = nv.models.multiBarHorizontalChart()
             .x(function(d) { return d.label })
             .y(function(d) { return d.value })
-            // .margin({top: 30, right: 20, bottom: 50, left: 175})
-            .showValues(true)
-            .tooltips(false)
-            .showControls(false);
+            .showValues(show_values)
+            .tooltips(tool_tips)
+            .showControls(controls);
 
         chart.yAxis
-            .tickFormat(d3.format(',.2f'));
+            .tickFormat(d3.format(y_tick_format));
 
         d3.select(selector)
             .datum(data_series)
-            .transition().duration(500)
+            .transition().duration(transition_duration)
             .call(chart);
 
         nv.utils.windowResize(chart.update);
@@ -269,8 +274,13 @@ function renderHorizontalMultiBar(params) {
             "multibar_transition_duration" : 500,
             
             // convert/render functions for horizontal bar chart
-            "horizontal_multibar_render" : renderHoriztonalMultiBar,
+            "horizontal_multibar_render" : renderHorizontalMultiBar,
             "horizontal_multibar_convert" : convertHorizontalMultiBar,
+            "horizontal_multibar_show_values" : true,
+            "horizontal_multibar_tool_tips" : true,
+            "horizontal_multibar_controls" : false,
+            "horizontal_multibar_y_tick_format" : ',.0f',
+            "horizontal_multibar_transition_duration" : 500,
             
             // data from which to build the graph
             "data_series" : false,
@@ -530,7 +540,7 @@ function renderHorizontalMultiBar(params) {
                         }
                         
                         // convert and render the series
-                        var series = convertFn({"data_series" : data_series})
+                        var series = convertFn({"data_series" : options.data_series})
                         renderFn({
                             "context" : obj,
                             "data_series" : series,
