@@ -285,7 +285,8 @@ function facetList(options) {
      * none - no requirements for specific classes and ids
      *
      * should (not must) respect the following config
-     * 
+     *
+     * options.facet[x].hidden - whether the facet should be displayed in the UI or not
      * options.render_terms_facet - renders a term facet into the list
      * options.render_range_facet - renders a range facet into the list
      * options.render_geo_facet - renders a geo distance facet into the list
@@ -295,6 +296,11 @@ function facetList(options) {
         var thefilters = '';
         for (var idx = 0; idx < filters.length; idx++) {
             var facet = filters[idx]
+            // if the facet is hidden do not include it in this list
+            if (facet.hidden) {
+                continue;
+            }
+
             var type = facet.type ? facet.type : "terms"
             if (type === "terms") {
                 thefilters += options.render_terms_facet(facet, options)
@@ -1199,6 +1205,7 @@ function getUrlVars() {
                 "display" : "<display name>",                                       // display name for the UI
                 "type": "term|range|geo_distance",                                  // the kind of facet this will be
                 "open" : true|false,                                                // whether the facet should be open or closed (initially)
+                "hidden" : true|false                                               // whether the facet should be displayed at all (e.g. you may just want the data for a callback)
                 
                 // terms facet only
                 
@@ -1241,6 +1248,7 @@ function getUrlVars() {
             // be initialised to the default
             "default_facet_type" : "terms",
             "default_facet_open" : false,
+            "default_facet_hidden" : false,
             "default_facet_size" : 10,
             "default_facet_operator" : "AND",  // logic
             "default_facet_order" : "count",
@@ -1503,6 +1511,7 @@ function getUrlVars() {
                 var facet = provided_options.facets[i]
                 if (!("type" in facet)) { facet["type"] = provided_options.default_facet_type }
                 if (!("open" in facet)) { facet["open"] = provided_options.default_facet_open }
+                if (!("hidden" in facet)) { facet["hiddel"] = provided_options.default_facet_hidden }
                 if (!("size" in facet)) { facet["size"] = provided_options.default_facet_size }
                 if (!("logic" in facet)) { facet["logic"] = provided_options.default_facet_operator }
                 if (!("order" in facet)) { facet["order"] = provided_options.default_facet_order }
@@ -1551,6 +1560,9 @@ function getUrlVars() {
             // for each facet, set the facet size, order and and/or status
             for (var i=0; i < options.facets.length; i=i+1) {
                 var f = options.facets[i]
+                if (f.hidden) {
+                    continue;
+                }
                 setUIFacetSize({facet : f})
                 setUIFacetSort({facet : f})
                 setUIFacetAndOr({facet : f})
@@ -2150,7 +2162,9 @@ function getUrlVars() {
                 facet["values"] = records.slice(0, size)
                 
                 // set the results on the page
-                setUIFacetResults(facet)
+                if (!facet.hidden) {
+                    setUIFacetResults(facet)
+                }
             }
             
             // set the facet visibility

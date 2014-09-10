@@ -138,7 +138,7 @@ function renderPie(params) {
     var transition_duration = options.pie_transition_duration
     
     // set the space up for the new chart
-    $(selector, context).empty()
+    //$(selector).empty()
     
     // generate the pie
     nv.addGraph(function() {
@@ -183,12 +183,14 @@ function renderMultiBar(params) {
     
     var y_tick_format = params.multibar_y_tick_format
     var transition_duration = params.multibar_transition_duration
+    var controls = options.multibar_controls
     
     // set the space up for the new chart
-    $(selector, context).empty()
+    //$(selector).empty()
     
     nv.addGraph(function() {
         var chart = nv.models.multiBarChart()
+            .showControls(controls)
 
         chart.yAxis
             .tickFormat(d3.format(y_tick_format));
@@ -219,7 +221,10 @@ function renderHorizontalMultiBar(params) {
     var controls = options.horizontal_multibar_controls
     var y_tick_format = options.horizontal_multibar_y_tick_format
     var transition_duration = options.horizontal_multibar_transition_duration
-    
+
+    // set the space up for the new chart
+    //$(selector).empty()
+
     nv.addGraph(function() {
         var chart = nv.models.multiBarHorizontalChart()
             .x(function(d) { return d.label })
@@ -272,6 +277,7 @@ function renderHorizontalMultiBar(params) {
             "multibar_convert" : convertMultiBar,
             "multibar_y_tick_format" : ',.0f',
             "multibar_transition_duration" : 500,
+            "multibar_controls" : false,
             
             // convert/render functions for horizontal bar chart
             "horizontal_multibar_render" : renderHorizontalMultiBar,
