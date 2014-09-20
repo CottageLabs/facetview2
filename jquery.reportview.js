@@ -222,6 +222,11 @@ function renderHorizontalMultiBar(params) {
     var y_tick_format = options.horizontal_multibar_y_tick_format
     var transition_duration = options.horizontal_multibar_transition_duration
 
+    var margin_top = options.horizontal_multibar_margin_top
+    var margin_right = options.horizontal_multibar_margin_right
+    var margin_bottom = options.horizontal_multibar_margin_bottom
+    var margin_left = options.horizontal_multibar_margin_left
+
     // set the space up for the new chart
     //$(selector).empty()
 
@@ -229,6 +234,7 @@ function renderHorizontalMultiBar(params) {
         var chart = nv.models.multiBarHorizontalChart()
             .x(function(d) { return d.label })
             .y(function(d) { return d.value })
+            .margin({top: margin_top, right: margin_right, bottom: margin_bottom, left: margin_left})
             .showValues(show_values)
             .tooltips(tool_tips)
             .showControls(controls);
@@ -287,6 +293,10 @@ function renderHorizontalMultiBar(params) {
             "horizontal_multibar_controls" : false,
             "horizontal_multibar_y_tick_format" : ',.0f',
             "horizontal_multibar_transition_duration" : 500,
+            "horizontal_multibar_margin_top" : 30,
+            "horizontal_multibar_margin_right": 50,
+            "horizontal_multibar_margin_bottom": 30,
+            "horizontal_multibar_margin_left": 200,
             
             // data from which to build the graph
             "data_series" : false,
