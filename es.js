@@ -105,6 +105,8 @@ function optionsFromQuery(query) {
                     break
                 }
             }
+
+            // FIXME: support for statistical facet
         }
         
         if (qs) {
@@ -295,6 +297,8 @@ function elasticSearchQuery(params) {
                     ranges.push(robj)
                 }
                 facet["geo_distance"]["ranges"] = ranges
+            } else if (defn.type === "statistical") {
+                facet["statistical"] = {"field" : defn["field"]}
             }
             qs["facets"][defn["field"]] = facet
         }
@@ -380,6 +384,9 @@ function elasticSearchSuccess(callback) {
                 } else if ("ranges" in facet) {
                     var range = facet["ranges"]
                     resultobj["facets"][item] = range
+                // handle statistical facets
+                } else if (facet["_type"] === "statistical") {
+                    resultobj["facets"][item] = facet
                 }
             }
         }

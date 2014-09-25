@@ -151,7 +151,15 @@ function theFacetview(options) {
     var thefacetview = '<div id="facetview"><div class="row-fluid">';
     
     // if there are facets, give them span3 to exist, otherwise, take up all the space
-    if ( options.facets.length > 0 ) {
+    var showfacets = false
+    for (var i = 0; i < options.facets.length; i++) {
+        var f = options.facets[i]
+        if (!f.hidden) {
+            showfacets = true;
+            break;
+        }
+    }
+    if (showfacets) {
         thefacetview += '<div class="span3"><div id="facetview_filters" style="padding-top:45px;"></div></div>';
         thefacetview += '<div class="span9" id="facetview_rightcol">';
     } else {
@@ -309,6 +317,7 @@ function facetList(options) {
             } else if (type === "geo_distance") {
                 thefilters += options.render_geo_facet(facet, options)
             }
+            // FIXME: statistical facet?
         };
         return thefilters
     };
@@ -1203,7 +1212,7 @@ function getUrlVars() {
             {
                 "field" : "<elasticsearch field>"                                   // field upon which to facet
                 "display" : "<display name>",                                       // display name for the UI
-                "type": "term|range|geo_distance",                                  // the kind of facet this will be
+                "type": "term|range|geo_distance|statistical",                      // the kind of facet this will be
                 "open" : true|false,                                                // whether the facet should be open or closed (initially)
                 "hidden" : true|false                                               // whether the facet should be displayed at all (e.g. you may just want the data for a callback)
                 
@@ -1889,6 +1898,7 @@ function getUrlVars() {
             } else if (facet.type === "geo_distance") {
                 frag = options.render_geo_facet_values(options, facet)
             }
+            // FIXME: how to display statistical facet?
             if (frag) {
                 el.append(frag)
             }
@@ -1926,6 +1936,7 @@ function getUrlVars() {
                 if (from) { value["from"] = from }
                 if (to) { value["to"] = to }
             }
+            // FIXME: how to handle clicks on statistical facet (if that even makes sense)
             
             // update the options and the filter display.  No need to update
             // the facet, as we'll issue a search straight away and it will
@@ -1959,6 +1970,7 @@ function getUrlVars() {
                 // NOTE: we are implicitly stating that geo distance range filters cannot be OR'd
                 options.active_filters[field] = value
             }
+            // FIXME: statistical facet support here?
         }
         
         function deSelectFilter(facet, field, value) {
@@ -1975,6 +1987,7 @@ function getUrlVars() {
                 } else if (facet.type === "geo_distance") {
                     delete options.active_filters[field]
                 }
+                // FIXME: statistical facet support?
             }
         }
         
@@ -1991,6 +2004,7 @@ function getUrlVars() {
                     } else if (facet.type === "geo_distance") {
                         frag += options.render_active_geo_filter(options, facet, field, filter_list)
                     }
+                    // FIXME: statistical facet?
                 }
             }
             
@@ -2021,6 +2035,7 @@ function getUrlVars() {
                 if (from) { value["from"] = from }
                 if (to) { value["to"] = to }
             }
+            // FIXMe: statistical facet
             
             deSelectFilter(facet, field, value)
             setUISelectedFilters()
@@ -2061,6 +2076,8 @@ function getUrlVars() {
                     }
                     visible = view
                 }
+                // FIXME: statistical facet?
+
                 options.behaviour_facet_visibility(options, obj, facet, visible)
             });
         }
@@ -2158,9 +2175,14 @@ function getUrlVars() {
                 // get the records to be displayed, limited by the size and record against
                 // the options object
                 var records = results["facets"][field];
-                if (!records) { records = [] }
-                facet["values"] = records.slice(0, size)
-                
+                // special rule for handling statistical facets
+                if (records.hasOwnProperty("_type") && records["_type"] == "statistical") {
+                    facet["values"] = records
+                } else {
+                    if (!records) { records = [] }
+                    facet["values"] = records.slice(0, size)
+                }
+
                 // set the results on the page
                 if (!facet.hidden) {
                     setUIFacetResults(facet)
@@ -2255,7 +2277,7 @@ function getUrlVars() {
                 obj.append(thefacetview);
                 
                 // add the search controls
-                $(".facetview_search_options_container").html(thesearchopts)
+                $(".facetview_search_options_container", obj).html(thesearchopts)
                 
                 // add the facets (empty at this stage)
                 if (thefacets != "") {
