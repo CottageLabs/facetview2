@@ -321,14 +321,22 @@ function renderHorizontalMultiBar(params) {
             {
                 "field" : "<elasticsearch field>"                                   // field upon which to facet
                 "display" : "<display name>",                                       // display name for the UI
-                "type": "term|range|geo_distance",                                  // the kind of facet this will be
-                
-                // terms facet only
+                "type": "term|range|geo_distance|statistical|terms_stats",          // the kind of facet this will be
+
+                "facet_label_field" : "<field to use as the label for the value>"   // so in a term facet, this would be "term"
+                "facet_value_field" : "<field to use as the value>"                 // in a term facet this would be "count", but in a terms_stats facet it could be "total"
+                "series_function" : <function>                                      // function which takes the facet and returns one or more series
+
+                // terms and terms_stats facets only
                 
                 "size" : <num>,                                                     // how many terms should the facet limit to
                 "order" : "count|reverse_count|term|reverse_term",                  // which standard ordering to use for facet values
                 "value_function" : <function>,                                      // function to be called on each value before display
-                
+
+                // terms_stats facets only
+
+                "value_field" : "<elasticsearch field>"                             // field on which to compute the statistics
+
                 // range facet only
                 
                 "range" : [                                                         // list of ranges (in order) which define the filters
@@ -359,6 +367,8 @@ function renderHorizontalMultiBar(params) {
             "default_distance_unit" : "km",
             "default_distance_lat" : 51.4768,       // Greenwich meridian (give or take a few decimal places)
             "default_distance_lon" : 0.0,           //
+            "default_facet_label_field" : "term",
+            "default_facet_value_field" : "count",
             
             // list of filters that will be added to the "must" boolean filter for every request
             // should take the form of a set of query elements that can be appended directly
@@ -409,6 +419,8 @@ function renderHorizontalMultiBar(params) {
                 if (!("lat" in facet)) { facet["lat"] = provided_options.default_distance_lat }
                 if (!("lon" in facet)) { facet["lon"] = provided_options.default_distance_lon }
                 if (!("value_function" in facet)) { facet["value_function"] = function(value) { return value } }
+                if (!("facet_label_field" in facet)) { facet["facet_label_field"] = provided_options.default_facet_label_field }
+                if (!("facet_value_field" in facet)) { facet["facet_value_field"] = provided_options.default_facet_value_field }
             }
             
             return provided_options
@@ -464,18 +476,23 @@ function renderHorizontalMultiBar(params) {
                     facet["values"] = records.slice(0, size)
                     
                     // now convert the facet values into the data series
-                    var series = {}
-                    series["key"] = facet["display"]
-                    series["values"] = []
-                    for (var i = 0; i < facet["values"].length; i++) {
-                        var result = facet["values"][i]
-                        var display = result.term
-                        if (facet.value_function) {
-                            display = facet.value_function(display)
+                    if (!facet.series_function) {
+                        var series = {};
+                        series["key"] = facet["display"];
+                        series["values"] = [];
+                        for (var i = 0; i < facet["values"].length; i++) {
+                            var result = facet["values"][i]
+                            var display = result[facet.facet_label_field]
+                            if (facet.value_function) {
+                                display = facet.value_function(display)
+                            }
+                            series.values.push({"label": display, "value": result[facet.facet_value_field]})
                         }
-                        series.values.push({"label" : display, "value" : result.count})
+                        data_series.push(series)
+                    } else {
+                        var custom_series = facet.series_function(options, facet);
+                        data_series = data_series.concat(custom_series)
                     }
-                    data_series.push(series)
                 }
                 
                 // finally, hit the callback
