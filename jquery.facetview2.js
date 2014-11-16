@@ -317,7 +317,7 @@ function facetList(options) {
             } else if (type === "geo_distance") {
                 thefilters += options.render_geo_facet(facet, options)
             }
-            // FIXME: statistical facet?
+            // FIXME: statistical facet and terms_stats facet?
         };
         return thefilters
     };
@@ -1936,7 +1936,7 @@ function getUrlVars() {
                 if (from) { value["from"] = from }
                 if (to) { value["to"] = to }
             }
-            // FIXME: how to handle clicks on statistical facet (if that even makes sense)
+            // FIXME: how to handle clicks on statistical facet (if that even makes sense) or terms_stats facet
             
             // update the options and the filter display.  No need to update
             // the facet, as we'll issue a search straight away and it will
