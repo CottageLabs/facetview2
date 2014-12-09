@@ -30,58 +30,70 @@
 
   <script type="text/javascript">
 jQuery(document).ready(function($) {
-    $('#report-view-pie-series').each(function() {
+    var fib_data_series = [
+        {
+            "key" : "Fibonacci",
+            "values" : [
+                {"label" : "first", "value" : 1},
+                {"label" : "second", "value" : 1},
+                {"label" : "third", "value" : 2},
+                {"label" : "fourth", "value" : 3},
+                {"label" : "fifth", "value" : 5},
+                {"label" : "sixth", "value" : 8},
+                {"label" : "seventh", "value" : 13}
+            ]
+        }
+    ];
+
+    $('#report-view-pie-series_hc').each(function() {
         $(this).report({
             type: "pie",
             pie_donut: false,
             pie_transition_duration: 100,
             pie_show_labels: true,
             pie_label_threshold: 0.1,
-            data_series : [{
-                name: 'Fibonacci sequence',
-                data: [
-                    ['first', 1],
-                    ['second', 1],
-                    {
-                        name: 'third',
-                        y: 2,
-                        sliced: true,
-                        selected: true
-                    },
-                    ['fourth', 3],
-                    ['fifth', 5],
-                    ['sixth', 8],
-                    ['seventh', 13]
-                ]
-            }]
+            data_series : fib_data_series
             //post_init_callback: function(options, context) { alert("post init")},
             //pre_render_callback: function(options, context) { alert("pre render")},
             //post_render_callback: function(options, context) { alert("post render")}
         });
     });
 
-    $('#report-view-pie-function').each(function() {
-        function powers_of_two(callback) {
-            var data_series = [
-                {
-                    "name" : "Powers of two",
-                    "data" : [
-                        ["two", 2],
-                        ["four",  4],
-                        ["eight",  8],
-                        ["sixteen",  16],
-                        ["thirty two",  32],
-                        ["sixty four",  64],
-                        ["one twenty eight",  128]
-                    ]
-                }
-            ]
-            callback(data_series)
-        }
+    $('#report-view-pie-series_d3').each(function() {
+        $(this).report({
+            provider: "d3",
+            type: "pie",
+            pie_donut: false,
+            pie_transition_duration: 100,
+            pie_show_labels: true,
+            pie_label_threshold: 0.1,
+            data_series : fib_data_series
+        });
+    });
+
+    function powers_of_two(callback) {
+    var data_series = [
+            {
+                "key" : "Powers of Two",
+                "values" : [
+                    {"label" : "two", "value" : 2},
+                    {"label" : "four", "value" : 4},
+                    {"label" : "eight", "value" : 8},
+                    {"label" : "sixteen", "value" : 16},
+                    {"label" : "thirty two", "value" : 32},
+                    {"label" : "sixty four", "value" : 64},
+                    {"label" : "one twenty eight", "value" : 128}
+                ]
+            }
+        ];
+        callback(data_series)
+    }
+
+    $('#report-view-pie-function_hc').each(function() {
         $(this).report({
             type: "pie",
             pie_donut: true,
-            pie_3d : true,
+            pie_3d : false,
             pie_transition_duration: 800,
             pie_show_labels: true,
             pie_label_threshold: 0.05,
@@ -89,8 +101,21 @@ jQuery(document).ready(function($) {
         });
     });
 
-    $('#report-view-pie-facet').each(function() {
+    $('#report-view-pie-function_d3').each(function() {
         $(this).report({
+            provider: "d3",
+            type: "pie",
+            pie_donut: true,
+            pie_transition_duration: 800,
+            pie_show_labels: true,
+            pie_label_threshold: 0.05,
+            data_function: powers_of_two
+        });
+    });
+
+    $('#report-view-pie-facet_d3').each(function() {
+        $(this).report({
+            provider: "d3",
             type: "pie",
             pie_donut: true,
             pie_transition_duration: 800,
@@ -108,7 +133,7 @@ jQuery(document).ready(function($) {
         });
     });
 
-    $('#report-view-bar-facet').each(function() {
+    $('#report-view-bar-facet_d3').each(function() {
         $(this).report({
             debug: true,
             type: "multibar",
@@ -136,59 +161,62 @@ jQuery(document).ready(function($) {
   </script>
 
 <style type="text/css">
-#report-view-pie-series {
+.pie {
     width:600px;
     height:400px;
 }
-#report-view-pie-series .reportview {
+.pie .reportview {
     height: 365px;
 }
-
-#report-view-pie-function {
+.bar {
     width:600px;
     height:400px;
 }
-#report-view-pie-function .reportview {
-    height: 365px;
-}
-
-#report-view-pie-facet {
-    width:600px;
-    height:400px;
-}
-#report-view-pie-facet .reportview {
-    height: 365px;
-}
-
-#report-view-bar-facet {
-    width:600px;
-    height:400px;
-}
-#report-view-bar-facet .reportview {
+.bar .reportview {
     height: 365px;
 }
 </style>
 
 </head>
 <body>
-
 <div class="row-fluid">
     <div class="span6">
-        <div id="report-view-pie-series"></div>
+        <div id="report-view-pie-series_hc" class="pie"></div>
     </div>
     <div class="span6">
-        <div id="report-view-pie-function"></div>
+        <div id="report-view-pie-series_d3" class="pie"></div>
     </div>
 </div>
-
+<hr>
 <div class="row-fluid">
     <div class="span6">
-        <div id="report-view-pie-facet"></div>
+        <div id="report-view-pie-function_hc" class="pie"></div>
     </div>
     <div class="span6">
-        <div id="report-view-bar-facet"></div>
+        <div id="report-view-pie-function_d3" class="pie"></div>
     </div>
 </div>
-
+<hr>
+<div class="row-fluid">
+    <div class="span6">
+        <div id="report-view-pie-facet_hc" class="pie"></div>
+    </div>
+    <div class="span6">
+        <div id="report-view-pie-facet_d3" class="pie"></div>
+    </div>
+</div>
+<hr>
+<div class="row-fluid">
+    <div class="span6">
+        <div id="report-view-bar-facet_hc" class="bar"></div>
+    </div>
+    <div class="span6">
+        <div id="report-view-bar-facet_d3" class="bar"></div>
+    </div>
+</div>
 </body>
+
+<footer>
+    Charts generated with <a href="http://www.highcharts.com/">Highcharts</a> and <a href="http://nvd3.org/">nvd3</a>
+</footer>
 </html>
