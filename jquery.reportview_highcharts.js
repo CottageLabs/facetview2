@@ -121,10 +121,10 @@ function theReportview(options) {
  * CHART CONVERT/RENDER FUNCTIONS
  *****************************************************************/
 
-function d3_to_hc(d3_data_series) {
+function hc_convertDataPie(params) {
     var hc_data_series = [];
-    for (var i = 0; i < d3_data_series.length; i++) {
-        var os = d3_data_series[i];
+    for (var i = 0; i < params.data_series.length; i++) {
+        var os = params.data_series[i];
         var ns = {};
         ns["name"] = os["key"];
         ns["data"] = [];
@@ -137,18 +137,13 @@ function d3_to_hc(d3_data_series) {
     return hc_data_series
 }
 
-function hc_convertDataPie(params) {
-    var data_series = params.data_series;
-    return d3_to_hc(data_series)
-}
-
 function hc_renderPie(params) {
     var data_series = params.data_series;
     var selector = params.div_selector;
     var options = params.options;
     var show_labels = options.pie_show_labels;
     var be_donut = options.pie_donut;
-    var be_3d = options.pie_3d;
+    var be_3d = options.draw_3d;
 
     // make a donut if asked to
     var inner;
@@ -195,8 +190,7 @@ function hc_renderPie(params) {
 }
 
 function d3_convertDataPie(params) {
-    var data_series = params.data_series;
-    return data_series
+    return params.data_series
 }
 
 function d3_renderPie(params) {
@@ -237,11 +231,82 @@ function d3_renderPie(params) {
 
         return chart;
     });
-
-
 }
 
-function convertMultiBar(params) {
+function hc_convertMultiBar(params){
+    var hc_data_series = [];
+    var x_labels = {"categories": []};
+    hc_data_series.push(x_labels);
+    for (var i = 0; i < params.data_series.length; i++) {
+        var os = params.data_series[i];
+        var ns = {};
+        ns["name"] = os["key"];
+        ns["data"] = [];
+        for (var j = 0; j < os.values.length; j++) {
+            x_labels.categories.push(os.values[j].label);
+            ns.data.push(os.values[j].value);
+        }
+        hc_data_series.push(ns)
+    }
+    return hc_data_series
+}
+
+function hc_renderMultiBar(params){
+    var context = params.context;
+    var data_series = params.data_series;
+    var selector = params.div_selector;
+    var options = params.options;
+
+    var be_3d = options.draw_3d;
+    var y_tick_format = params.multibar_y_tick_format;
+    var transition_duration = params.multibar_transition_duration;
+    var controls = options.multibar_controls;
+
+    var chart = new Highcharts.Chart({
+        chart: {
+            renderTo: selector,
+            type: 'column',
+            options3d: {
+                enabled: be_3d,
+                alpha: 15,
+                beta: 15,
+                depth: 50,
+                viewDistance: 55
+            }
+        },
+        credits: {
+            enabled: false
+        },
+        title: {
+            text: 'Title Text'
+        },
+        subtitle: {
+            text: 'subtitle text'
+        },
+        xAxis: data_series[0],
+        yAxis: {
+            min: 0,
+            title: {
+                text: 'y axis label'
+            }
+        },
+        tooltip: {
+            headerFormat: '<span style="font-size:14px">{series.name}</span><br><span style="font-size:10px ">{point.key}: </span>',
+            pointFormat: '<b>{point.y}</b>',
+            shared: true,
+            useHTML: true
+        },
+        plotOptions: {
+            column: {
+                pointPadding: 0.2,
+                borderWidth: 0
+            }
+        },
+        series: data_series.slice(1)
+    });
+}
+
+function d3_convertMultiBar(params) {
     var series = params.data_series;
     var new_series = [];
     for (var i = 0; i < series.length; i++) {
@@ -258,7 +323,7 @@ function convertMultiBar(params) {
     return new_series
 }
 
-function renderMultiBar(params) {
+function d3_renderMultiBar(params) {
     var context = params.context;
     var data_series = params.data_series;
     var selector = params.svg_selector;
@@ -288,12 +353,11 @@ function renderMultiBar(params) {
     });
 }
 
-function convertHorizontalMultiBar(params) {
-    var data_series = params.data_series;
-    return data_series
+function d3_convertHorizontalMultiBar(params) {
+    return params.data_series
 }
 
-function renderHorizontalMultiBar(params) {
+function d3_renderHorizontalMultiBar(params) {
     var context = params.context;
     var data_series = params.data_series;
     var selector = params.svg_selector;
@@ -352,6 +416,9 @@ function renderHorizontalMultiBar(params) {
 
             // the provider of the charts. either d3 or hc (for HighCharts)
             "provider" : "hc",
+
+            // highcharts can make 3d charts
+            "draw_3d" : false, // hc only
             
             // render the frame within which the reportview sits
             "render_the_reportview" : theReportview,
@@ -361,20 +428,19 @@ function renderHorizontalMultiBar(params) {
             "pie_convert" : hc_convertDataPie,
             "pie_show_labels" : true,
             "pie_donut" : false,
-            "pie_3d" : false, // hc only
             "pie_label_threshold" : 0.05, // d3 only
             "pie_transition_duration" : 500, // d3 only
             
             // convert/render functions for multi-bar chart
-            "multibar_render" : renderMultiBar,
-            "multibar_convert" : convertMultiBar,
+            "multibar_render" : hc_renderMultiBar,
+            "multibar_convert" : hc_convertMultiBar,
             "multibar_y_tick_format" : ',.0f',
             "multibar_transition_duration" : 500,
             "multibar_controls" : false,
             
             // convert/render functions for horizontal bar chart
-            "horizontal_multibar_render" : renderHorizontalMultiBar,
-            "horizontal_multibar_convert" : convertHorizontalMultiBar,
+            "horizontal_multibar_render" : d3_renderHorizontalMultiBar,
+            "horizontal_multibar_convert" : d3_convertHorizontalMultiBar,
             "horizontal_multibar_show_values" : true,
             "horizontal_multibar_tool_tips" : true,
             "horizontal_multibar_controls" : false,
@@ -496,6 +562,10 @@ function renderHorizontalMultiBar(params) {
             if (options.provider == 'd3'){
                 defaults.pie_render = d3_renderPie;
                 defaults.pie_convert = d3_convertDataPie;
+                defaults.multibar_render = d3_renderMultiBar;
+                defaults.multibar_convert = d3_convertMultiBar;
+                defaults.horizontal_multibar_render = d3_renderHorizontalMultiBar;
+                defaults.horizontal_multibar_convert = d3_convertHorizontalMultiBar;
             }
             
             // extend the defaults with the provided options

@@ -49,6 +49,7 @@ jQuery(document).ready(function($) {
         $(this).report({
             type: "pie",
             pie_donut: false,
+            draw_3d: false,
             pie_transition_duration: 100,
             pie_show_labels: true,
             pie_label_threshold: 0.1,
@@ -93,7 +94,7 @@ jQuery(document).ready(function($) {
         $(this).report({
             type: "pie",
             pie_donut: true,
-            pie_3d : false,
+            draw_3d : false,
             pie_transition_duration: 800,
             pie_show_labels: true,
             pie_label_threshold: 0.05,
@@ -133,10 +134,37 @@ jQuery(document).ready(function($) {
         });
     });
 
+    $('#report-view-bar-facet_hc').each(function() {
+        $(this).report({
+            debug: true,
+            type: "multibar",
+            draw_3d: false,
+            search_url: "http://localhost:9200/doaj/article/_search",
+            facets: [
+                {
+                    "field" : "bibjson.license.type.exact",
+                    "size" : 100,
+                    "display" : "Article Licence",
+                    "value_function" : function(value) { return value.toLowerCase().replace(/-/g, " ") }
+                },
+                {
+                    "field" : "bibjson.journal.license.type.exact",
+                    "size" : 100,
+                    "display" : "Journal Licence",
+                    "value_function" : function(value) { return value.toLowerCase().replace(/-/g, " ") }
+                }
+            ],
+            fixed_filters: [
+                {"term" : {"bibjson.journal.country.exact" : "GB"}}
+            ]
+        });
+    });
+
     $('#report-view-bar-facet_d3').each(function() {
         $(this).report({
             debug: true,
             type: "multibar",
+            provider: "d3",
             search_url: "http://localhost:9200/doaj/article/_search",
             facets: [
                 {
@@ -214,6 +242,7 @@ jQuery(document).ready(function($) {
         <div id="report-view-bar-facet_d3" class="bar"></div>
     </div>
 </div>
+<hr>
 </body>
 
 <footer>
