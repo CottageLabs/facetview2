@@ -72,7 +72,7 @@ function ie8compat(o) {
     }
 
     // first see if this clean up is necessary at all
-    var test = ["a", "b", "c", ]  // note trailing comma, will produce ["a", "b", "c", undefined] in IE8 and ["a", "b", "c"] in every sane browser
+    var test = ["a", "b", "c", ];  // note trailing comma, will produce ["a", "b", "c", undefined] in IE8 and ["a", "b", "c"] in every sane browser
     if ($.type(test[test.length - 1]) == 'undefined') {
         // ok, cleanup is necessary, go
         for (var key in o) {
@@ -109,7 +109,7 @@ function theReportview(options) {
      */
 
     // the reportview object to be appended to the page
-    var thereportview = '<div class="reportview"><svg></svg>'
+    var thereportview = '<div class="reportview"><svg></svg>';
     if (options.debug) {
         thereportview += "<div class='reportview_debug'><textarea style='width: 100%; height: 200px'></textarea></div>"
     }
@@ -121,25 +121,112 @@ function theReportview(options) {
  * CHART CONVERT/RENDER FUNCTIONS
  *****************************************************************/
 
-function convertDataPie(params) {
-    var data_series = params.data_series
-    return data_series
+function hc_convertDataPie(params) {
+    var hc_data_series = [];
+    for (var i = 0; i < params.data_series.length; i++) {
+        var os = params.data_series[i];
+        var ns = {};
+        ns["name"] = os["key"];
+        ns["data"] = [];
+        for (var j = 0; j < os.values.length; j++) {
+            var data_entry = [os.values[j].label, os.values[j].value];
+            ns["data"].push(data_entry)
+        }
+        hc_data_series.push(ns)
+    }
+    return hc_data_series
 }
 
-function renderPie(params) {
-    var context = params.context
-    var data_series = params.data_series
-    var selector = params.svg_selector
-    var options = params.options
-    
-    var show_labels = options.pie_show_labels
-    var label_threshold = options.pie_label_threshold
-    var be_donut = options.pie_donut
-    var transition_duration = options.pie_transition_duration
-    
+function hc_renderPie(params) {
+    var data_series = params.data_series;
+    var selector = params.div_selector;
+    var options = params.options;
+    var show_labels = options.pie_show_labels;
+    var be_donut = options.pie_donut;
+    var be_3d = options.draw_3d;
+
+    // make a donut if asked to
+    var inner;
+    if (be_donut) {
+        inner = 100
+    }
+
+    // get chart titles, if any
+    var titles = get_chart_titles(params);
+
+    // generate the pie
+    var chart = new Highcharts.Chart({
+        chart: {
+            renderTo: selector,
+            plotBackgroundColor: null,
+            plotBorderWidth: null,
+            plotShadow: false,
+            type: 'pie',
+            options3d: {
+                enabled: be_3d,
+                alpha: 45
+            }
+        },
+        credits: {
+            enabled: false
+        },
+        title: {
+            text: titles.title_text
+        },
+        subtitle: {
+            text: titles.subtitle_text
+        },
+        tooltip: {
+            pointFormat: '<b>{point.y}</b>'
+        },
+        plotOptions: {
+            pie: {
+                allowPointSelect: true,
+                cursor: 'pointer',
+                dataLabels: {
+                    enabled: show_labels
+                },
+            showInLegend: true,
+            innerSize: inner,
+            depth: 45
+            }
+        },
+        series : data_series
+    });
+}
+
+function d3_convertDataPie(params) {
+    return params.data_series
+}
+
+function d3_renderPie(params) {
+    var data_series = params.data_series;
+    var selector = params.svg_selector;
+    var options = params.options;
+
+    var show_labels = options.pie_show_labels;
+    var label_threshold = options.pie_label_threshold;
+    var be_donut = options.pie_donut;
+    var transition_duration = options.pie_transition_duration;
+
     // set the space up for the new chart
     //$(selector).empty()
-    
+
+    if (options.main_title){
+        if (typeof options.main_title == "string"){
+            var title_text = options.main_title
+        }else{
+            title_text = data_series[0].key
+        }
+        d3.select(selector)
+            .append("text")
+            .attr("x", $(selector).width() / 2)
+            .attr("y", $(selector).height() - 5)
+            .style("font-size", '18px')
+            .attr("text-anchor", "middle")
+            .text(title_text);
+    }
+
     // generate the pie
     nv.addGraph(function() {
         var chart = nv.models.pieChart()
@@ -158,16 +245,98 @@ function renderPie(params) {
     });
 }
 
-function convertMultiBar(params) {
-    var series = params.data_series
-    var new_series = []
-    for (var i = 0; i < series.length; i++) {
-        var os = series[i]
-        var ns = {}
-        ns["key"] = os["key"]
-        ns["values"] = []
+function hc_convertMultiBar(params){
+    var hc_data_series = [];
+    var x_labels = {"categories": []};
+    hc_data_series.push(x_labels);
+    for (var i = 0; i < params.data_series.length; i++) {
+        var os = params.data_series[i];
+        var ns = {};
+        ns["name"] = os["key"];
+        ns["data"] = [];
         for (var j = 0; j < os.values.length; j++) {
-            var vector = os.values[j]
+            x_labels.categories.push(os.values[j].label);
+            ns.data.push(os.values[j].value);
+        }
+        hc_data_series.push(ns)
+    }
+    return hc_data_series
+}
+
+function hc_renderMultiBar(params){
+    var data_series = params.data_series;
+    var selector = params.div_selector;
+    var options = params.options;
+    var be_3d = options.draw_3d;
+
+    // get chart titles, if any
+    var titles = get_chart_titles(params);
+
+    // Switch to horizontal type if required
+    var chart_type = 'column';
+    if (options.type == 'horizontal_multibar'){
+        chart_type = 'bar'
+    }
+
+    var chart = new Highcharts.Chart({
+        chart: {
+            renderTo: selector,
+            type: chart_type,
+            options3d: {
+                enabled: be_3d,
+                alpha: 15,
+                beta: 15,
+                depth: 50,
+                viewDistance: 55
+            }
+        },
+        credits: {
+            enabled: false
+        },
+        title: {
+            text: titles.title_text
+        },
+        subtitle: {
+            text: titles.subtitle_text
+        },
+        xAxis: {
+            categories: data_series[0].categories,
+            title: {
+                text: titles.x_axis_label
+            }
+        },
+        yAxis: {
+            min: 0,
+            title: {
+                text: titles.y_axis_label
+            }
+        },
+        tooltip: {
+            headerFormat: '<span style="font-size:14px">{series.name}</span><br><span style="font-size:10px ">{point.key}: </span>',
+            pointFormat: '<b>{point.y}</b>',
+            shared: true,
+            useHTML: true
+        },
+        plotOptions: {
+            column: {
+                pointPadding: 0.2,
+                borderWidth: 0
+            }
+        },
+        series: data_series.slice(1)
+    });
+}
+
+function d3_convertMultiBar(params) {
+    var series = params.data_series;
+    var new_series = [];
+    for (var i = 0; i < series.length; i++) {
+        var os = series[i];
+        var ns = {};
+        ns["key"] = os["key"];
+        ns["values"] = [];
+        for (var j = 0; j < os.values.length; j++) {
+            var vector = os.values[j];
             ns["values"].push({x : vector.label, y : vector.value})
         }
         new_series.push(ns)
@@ -175,22 +344,21 @@ function convertMultiBar(params) {
     return new_series
 }
 
-function renderMultiBar(params) {
-    var context = params.context
-    var data_series = params.data_series
-    var selector = params.svg_selector
-    var options = params.options
+function d3_renderMultiBar(params) {
+    var data_series = params.data_series;
+    var selector = params.svg_selector;
+    var options = params.options;
     
-    var y_tick_format = params.multibar_y_tick_format
-    var transition_duration = params.multibar_transition_duration
-    var controls = options.multibar_controls
+    var y_tick_format = params.multibar_y_tick_format;
+    var transition_duration = params.multibar_transition_duration;
+    var controls = options.multibar_controls;
     
     // set the space up for the new chart
     //$(selector).empty()
     
     nv.addGraph(function() {
         var chart = nv.models.multiBarChart()
-            .showControls(controls)
+            .showControls(controls);
 
         chart.yAxis
             .tickFormat(d3.format(y_tick_format));
@@ -205,27 +373,33 @@ function renderMultiBar(params) {
     });
 }
 
-function convertHorizontalMultiBar(params) {
-    var data_series = params.data_series
-    return data_series
+function hc_convertHorizontalMultibar(params){
+    return hc_convertMultiBar(params)
 }
 
-function renderHorizontalMultiBar(params) {
-    var context = params.context
-    var data_series = params.data_series
-    var selector = params.svg_selector
-    var options = params.options
+function hc_renderHorizontalMultibar(params){
+    hc_renderMultiBar(params)
+}
 
-    var show_values = options.horizontal_multibar_show_values
-    var tool_tips = options.horizontal_multibar_tool_tips
-    var controls = options.horizontal_multibar_controls
-    var y_tick_format = options.horizontal_multibar_y_tick_format
-    var transition_duration = options.horizontal_multibar_transition_duration
+function d3_convertHorizontalMultiBar(params) {
+    return params.data_series
+}
 
-    var margin_top = options.horizontal_multibar_margin_top
-    var margin_right = options.horizontal_multibar_margin_right
-    var margin_bottom = options.horizontal_multibar_margin_bottom
-    var margin_left = options.horizontal_multibar_margin_left
+function d3_renderHorizontalMultiBar(params) {
+    var data_series = params.data_series;
+    var selector = params.svg_selector;
+    var options = params.options;
+
+    var show_values = options.horizontal_multibar_show_values;
+    var tool_tips = options.horizontal_multibar_tool_tips;
+    var controls = options.horizontal_multibar_controls;
+    var y_tick_format = options.horizontal_multibar_y_tick_format;
+    var transition_duration = options.horizontal_multibar_transition_duration;
+
+    var margin_top = options.horizontal_multibar_margin_top;
+    var margin_right = options.horizontal_multibar_margin_right;
+    var margin_bottom = options.horizontal_multibar_margin_bottom;
+    var margin_left = options.horizontal_multibar_margin_left;
 
     // set the space up for the new chart
     //$(selector).empty()
@@ -253,6 +427,36 @@ function renderHorizontalMultiBar(params) {
     });
 }
 
+function get_chart_titles(params){
+    var options = params.options;
+    var data_series = params.data_series;
+    var titles = {};
+
+    titles['title_text'] = "";
+    if (options.main_title){
+        if (options.main_title == true){
+            titles.title_text = data_series[0].name
+        } else {
+            titles.title_text = options.main_title
+        }
+    }
+    // get subtitle if required
+    titles['subtitle_text'] = "";
+    if (options.sub_title){
+        titles.subtitle_text = options.sub_title
+    }
+    // axis labels
+    titles['y_axis_label'] = "";
+    if (options.y_axis_label){
+        titles.y_axis_label = options.y_axis_label
+    }
+    titles['x_axis_label'] = "";
+    if (options.x_axis_label){
+        titles.x_axis_label = options.x_axis_label
+    }
+    return titles
+}
+
 /******************************************************************
  * REPORT VIEW
  *****************************************************************/
@@ -266,28 +470,34 @@ function renderHorizontalMultiBar(params) {
             // type of graph to draw
             // values: pie, multibar, horizontal_multibar
             "type" : "pie",
+
+            // the provider of the charts. either d3 or hc (for HighCharts)
+            "provider" : "hc",
+
+            // highcharts can make 3d charts
+            "draw_3d" : false, // hc only
             
             // render the frame within which the reportview sits
             "render_the_reportview" : theReportview,
             
             // convert/render functions for pie chart
-            "pie_render" : renderPie,
-            "pie_convert" : convertDataPie,
+            "pie_render" : hc_renderPie,
+            "pie_convert" : hc_convertDataPie,
             "pie_show_labels" : true,
-            "pie_label_threshold" : 0.05,
-            "pie_donut" : true,
-            "pie_transition_duration" : 500,
+            "pie_donut" : false,
+            "pie_label_threshold" : 0.05, // d3 only
+            "pie_transition_duration" : 500, // d3 only
             
             // convert/render functions for multi-bar chart
-            "multibar_render" : renderMultiBar,
-            "multibar_convert" : convertMultiBar,
+            "multibar_render" : hc_renderMultiBar,
+            "multibar_convert" : hc_convertMultiBar,
             "multibar_y_tick_format" : ',.0f',
             "multibar_transition_duration" : 500,
             "multibar_controls" : false,
             
             // convert/render functions for horizontal bar chart
-            "horizontal_multibar_render" : renderHorizontalMultiBar,
-            "horizontal_multibar_convert" : convertHorizontalMultiBar,
+            "horizontal_multibar_render" : hc_renderHorizontalMultibar,
+            "horizontal_multibar_convert" : hc_convertHorizontalMultibar,
             "horizontal_multibar_show_values" : true,
             "horizontal_multibar_tool_tips" : true,
             "horizontal_multibar_controls" : false,
@@ -301,6 +511,12 @@ function renderHorizontalMultiBar(params) {
             // data from which to build the graph
             "data_series" : false,
             "data_function" : false,
+
+            // Titles and labels
+            "main_title" : false, // true for series label, or specify string
+            "sub_title" :false, // hc only. specify string
+            "y_axis_label" : false, // specify string
+            "x_axis_label" : false, // specify string
             
             ///// facet aspects /////////////////////////////
             
@@ -355,8 +571,7 @@ function renderHorizontalMultiBar(params) {
                 // admin use only
                 
                 "values" : <object>                                                 // the values associated with a successful query on this facet
-            }
-            */
+            }*/
             "facets" : [],
             
             // default settings for each of the facet properties above.  If a facet lacks a property, it will
@@ -399,19 +614,29 @@ function renderHorizontalMultiBar(params) {
             
             // the parsed data from elasticsearch
             "data" : false
-        }
+        };
         
         function deriveOptions() {
             // cleanup for ie8 purposes
-            ie8compat(options)
-            ie8compat(defaults)
+            ie8compat(options);
+            ie8compat(defaults);
+
+            // If we want to use d3, override some options.
+            if (options.provider == 'd3'){
+                defaults.pie_render = d3_renderPie;
+                defaults.pie_convert = d3_convertDataPie;
+                defaults.multibar_render = d3_renderMultiBar;
+                defaults.multibar_convert = d3_convertMultiBar;
+                defaults.horizontal_multibar_render = d3_renderHorizontalMultiBar;
+                defaults.horizontal_multibar_convert = d3_convertHorizontalMultiBar;
+            }
             
             // extend the defaults with the provided options
             var provided_options = $.extend(defaults, options);
             
             // copy in the defaults to the individual facets when they are needed
             for (var i=0; i < provided_options.facets.length; i=i+1) {
-                var facet = provided_options.facets[i]
+                var facet = provided_options.facets[i];
                 if (!("type" in facet)) { facet["type"] = provided_options.default_facet_type }
                 if (!("size" in facet)) { facet["size"] = provided_options.default_facet_size }
                 if (!("order" in facet)) { facet["order"] = provided_options.default_facet_order }
@@ -445,15 +670,15 @@ function renderHorizontalMultiBar(params) {
         function facetDataSeries(callback) {
             // make the search query
             var queryobj = elasticSearchQuery({"options" : options});
-            options.queryobj = queryobj
+            options.queryobj = queryobj;
             if (options.debug) {
-                var querystring = serialiseQueryObject(queryobj)
+                var querystring = serialiseQueryObject(queryobj);
                 addDebug(querystring)
             }
             
             function querySuccess(rawdata, results) {
                 if (options.debug) {
-                    addDebug(JSON.stringify(rawdata))
+                    addDebug(JSON.stringify(rawdata));
                     addDebug(JSON.stringify(results))
                 }
                 
@@ -462,18 +687,18 @@ function renderHorizontalMultiBar(params) {
                 options.data = results;
                 
                 // for each facet, get the results and add them to the options
-                var data_series = []
+                var data_series = [];
                 for (var each = 0; each < options.facets.length; each++) {
                     // get the facet, the field name and the size
-                    var facet = options.facets[each]
+                    var facet = options.facets[each];
                     var field = facet['field'];
-                    var size = facet["size"] ? facet["size"] : options.default_facet_size
+                    var size = facet["size"] ? facet["size"] : options.default_facet_size;
                     
                     // get the records to be displayed, limited by the size and record against
                     // the options object
                     var records = results["facets"][field];
                     if (!records) { records = [] }
-                    facet["values"] = records.slice(0, size)
+                    facet["values"] = records.slice(0, size);
                     
                     // now convert the facet values into the data series
                     if (!facet.series_function) {
@@ -481,8 +706,8 @@ function renderHorizontalMultiBar(params) {
                         series["key"] = facet["display"];
                         series["values"] = [];
                         for (var i = 0; i < facet["values"].length; i++) {
-                            var result = facet["values"][i]
-                            var display = result[facet.facet_label_field]
+                            var result = facet["values"][i];
+                            var display = result[facet.facet_label_field];
                             if (facet.value_function) {
                                 display = facet.value_function(display)
                             }
@@ -514,21 +739,21 @@ function renderHorizontalMultiBar(params) {
          *************************************************************/
         
         // set the externally facing reportview options
-        $.fn.report.options = deriveOptions()
+        $.fn.report.options = deriveOptions();
         var options = $.fn.report.options;
         
-        var thereportview = options.render_the_reportview(options)
+        var thereportview = options.render_the_reportview(options);
         
         // now create the plugin on the page for each div
         var obj = undefined;
         return this.each(function() {
             // get this object
             obj = $(this);
-            var element_id = obj.attr("id")
+            var element_id = obj.attr("id");
             
             // what to do when ready to go
             var whenready = function() {
-                obj.append(thereportview)
+                obj.append(thereportview);
                 
                 // if a post initialisation callback is provided, run it
                 if (typeof options.post_init_callback === 'function') {
@@ -538,7 +763,7 @@ function renderHorizontalMultiBar(params) {
                 // determine the correct data function
                 
                 // if there is a data function provided, use it
-                var data_function = options.data_function
+                var data_function = options.data_function;
                 
                 // if there is no data function provided, but facets are defined, use them
                 if (!data_function) {
@@ -553,19 +778,19 @@ function renderHorizontalMultiBar(params) {
                 }
                 
                 // now set the data function on the options object, so it can be accessed elsewhere
-                options.data_function = data_function
+                options.data_function = data_function;
                 
                 // get the convert and render functions
-                var render = options.type + "_render"
-                var convert = options.type + "_convert"
-                var renderFn = options[render]
-                var convertFn = options[convert]
+                var render = options.type + "_render";
+                var convert = options.type + "_convert";
+                var renderFn = options[render];
+                var convertFn = options[convert];
                 
                 // execute the data function and send it the chain to process after
                 function onwardClosure(convertFn, renderFn) {
                     function onward(data_series) {
                         // record the data series
-                        options.data_series = data_series
+                        options.data_series = data_series;
                         
                         // if a pre render callback is provided, run it
                         if (typeof options.pre_render_callback === 'function') {
@@ -573,13 +798,14 @@ function renderHorizontalMultiBar(params) {
                         }
                         
                         // convert and render the series
-                        var series = convertFn({"data_series" : options.data_series})
+                        var series = convertFn({"data_series" : options.data_series});
                         renderFn({
                             "context" : obj,
                             "data_series" : series,
                             "svg_selector" : "#" + element_id + " .reportview svg",
+                            "div_selector" : element_id,
                             "options" : options
-                        })
+                        });
                         
                         // if a post render callback is provided, run it
                         if (typeof options.post_render_callback === 'function') {
@@ -590,7 +816,7 @@ function renderHorizontalMultiBar(params) {
                 }
                 data_function(onwardClosure(convertFn, renderFn))
                 
-            }
+            };
             whenready();
         });
     }
