@@ -177,7 +177,7 @@ function hc_renderPie(params) {
             text: titles.subtitle_text
         },
         tooltip: {
-            pointFormat: '<b>{point.y}</b>'
+            pointFormat: '<b>{point.y:' + options.tooltip_num_format + '}</b>'
         },
         plotOptions: {
             pie: {
@@ -313,7 +313,7 @@ function hc_renderMultiBar(params){
         },
         tooltip: {
             headerFormat: '<span style="font-size:14px">{series.name}</span><br><span style="font-size:10px ">{point.key}: </span>',
-            pointFormat: '<b>{point.y}</b>',
+            pointFormat: '<b>{point.y:' + options.tooltip_num_format + '}</b>',
             shared: true,
             useHTML: true
         },
@@ -517,6 +517,7 @@ function get_chart_titles(params){
             "sub_title" :false, // hc only. specify string
             "y_axis_label" : false, // specify string
             "x_axis_label" : false, // specify string
+            "tooltip_num_format" : ',.0f',
             
             ///// facet aspects /////////////////////////////
             

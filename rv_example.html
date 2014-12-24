@@ -54,8 +54,8 @@ jQuery(document).ready(function($) {
             pie_show_labels: true,
             pie_label_threshold: 0.1,
             data_series : fib_data_series,
-            "main_title" : true,
-            "sub_title" : false
+            main_title : true,
+            sub_title : false
             //post_init_callback: function(options, context) { alert("post init")},
             //pre_render_callback: function(options, context) { alert("pre render")},
             //post_render_callback: function(options, context) { alert("post render")}
@@ -70,7 +70,8 @@ jQuery(document).ready(function($) {
             pie_transition_duration: 100,
             pie_show_labels: true,
             pie_label_threshold: 0.1,
-            data_series : fib_data_series
+            data_series : fib_data_series,
+            main_title : true
         });
     });
 
@@ -97,9 +98,7 @@ jQuery(document).ready(function($) {
             type: "pie",
             pie_donut: true,
             draw_3d : false,
-            pie_transition_duration: 800,
             pie_show_labels: true,
-            pie_label_threshold: 0.05,
             data_function: powers_of_two
         });
     });
@@ -113,6 +112,24 @@ jQuery(document).ready(function($) {
             pie_show_labels: true,
             pie_label_threshold: 0.05,
             data_function: powers_of_two
+        });
+    });
+
+    $('#report-view-pie-facet_hc').each(function() {
+        $(this).report({
+            provider: "hc",
+            type: "pie",
+            pie_donut: true,
+            pie_show_labels: true,
+            search_url: "http://localhost:9200/doaj/article/_search",
+            facets: [
+                {
+                    "field" : "bibjson.license.type.exact",
+                    "size" : 100,
+                    "display" : "Licence Type",
+                    "value_function" : function(value) { return value.toUpperCase() }
+                }
+            ]
         });
     });
 
@@ -141,10 +158,10 @@ jQuery(document).ready(function($) {
             debug: true,
             type: "multibar",
             draw_3d: false,
-            "main_title" : "Licenses",
-            "sub_title" : "Count by index",
-            "x_axis_label" : false,
-            "y_axis_label" : false,
+            main_title : "Licenses",
+            sub_title : "Count by index",
+            x_axis_label : false,
+            y_axis_label : false,
             search_url: "http://localhost:9200/doaj/article/_search",
             facets: [
                 {
