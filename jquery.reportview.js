@@ -312,8 +312,8 @@ function hc_renderMultiBar(params){
             }
         },
         tooltip: {
-            headerFormat: '<span style="font-size:14px">{series.name}</span><br><span style="font-size:10px ">{point.key}: </span>',
-            pointFormat: '<b>{point.y:' + options.tooltip_num_format + '}</b>',
+            headerFormat: '<span style="font-size:14px">{point.key}</span><br>',
+            pointFormat: '{series.name}: <b>{point.y:' + options.tooltip_num_format + '}</b><br/>',
             shared: true,
             useHTML: true
         },
