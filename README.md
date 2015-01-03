@@ -15,10 +15,13 @@ Add the following code to your web page:
     <script type="text/javascript" src="vendor/bootstrap/js/bootstrap.min.js"></script>  
     <link rel="stylesheet" href="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.css">
     <script type="text/javascript" src="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.min.js"></script>
+    
+    <script type="text/javascript" src="es.js"></script>
+    <script type="text/javascript" src="bootstrap2.facetview.theme.js"></script>
     <script type="text/javascript" src="jquery.facetview2.js"></script>
     <link rel="stylesheet" href="css/facetview.css">
 
-Then add a script somewhere to your page that actually calls and sets up the  facetview on a particular page element:
+Then add a script somewhere to your page that actually calls and sets up the facetview on a particular page element:
 
     <script type="text/javascript">
     jQuery(document).ready(function($) {
