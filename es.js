@@ -17,7 +17,9 @@ function optionsFromQuery(query) {
     }
     
     var opts = {}
-    
+
+    // FIXME: note that fields are not supported here
+
     // from position
     if (query.from) { opts["from"] = query.from }
     
@@ -250,6 +252,7 @@ function elasticSearchQuery(params) {
     if (include_fields) {
         options.fields ? qs['fields'] = options.fields : "";
         options.partial_fields ? qs['partial_fields'] = options.partial_fields : "";
+        options.script_fields ? qs["script_fields"] = options.script_fields : "";
     }
     
     // paging (number of results, and start cursor)
@@ -368,7 +371,7 @@ function elasticSearchSuccess(callback) {
         for (var item = 0; item < data.hits.hits.length; item++) {
             var res = data.hits.hits[item]
             if ("fields" in res) {
-                // partial fields are also included here - no special treatment
+                // partial_fields and script_fields are also included here - no special treatment
                 resultobj.records.push(res.fields)
             } else {
                 resultobj.records.push(res._source)

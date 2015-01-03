@@ -241,6 +241,11 @@ function getUrlVars() {
             
             // list of partial fields to be returned by the elasticsearch query.  If omitted, full result set is returned
             "partial_fields" : false, // or an array of partial fields
+
+            // list of script fields to be executed.  Note that you should, in general, not pass actual scripts but
+            // references to stored scripts in the back-end ES.  If not false, then an object corresponding to the
+            // ES script_fields structure
+            "script_fields" : false,
             
             // number of results to display per page (i.e. to retrieve per query)
             "page_size" : 10,
