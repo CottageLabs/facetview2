@@ -121,13 +121,13 @@ jQuery(document).ready(function($) {
             type: "pie",
             pie_donut: true,
             pie_show_labels: true,
-            search_url: "http://localhost:9200/doaj/article/_search",
+            search_url: "http://localhost:9200/doaj/journal/_search",
             main_title : true,
             facets: [
                 {
-                    "field" : "bibjson.journal.license.type.exact",
-                    "size" : 100,
-                    "display" : "Licence Type",
+                    "field" : "bibjson.language.exact",
+                    "size" : 10,
+                    "display" : "Journal Languages",
                     "value_function" : function(value) { return value.toLowerCase() }
                 }
             ]
@@ -143,12 +143,12 @@ jQuery(document).ready(function($) {
             pie_show_labels: true,
             pie_label_threshold: 0.05,
             main_title : true,
-            search_url: "http://localhost:9200/doaj/article/_search",
+            search_url: "http://localhost:9200/doaj/journal/_search",
             facets: [
                 {
-                    "field" : "bibjson.journal.license.type.exact",
-                    "size" : 100,
-                    "display" : "Licence Type",
+                    "field" : "bibjson.language.exact",
+                    "size" : 10,
+                    "display" : "Journal Languages",
                     "value_function" : function(value) { return value.toLowerCase() }
                 }
             ]
@@ -221,8 +221,6 @@ jQuery(document).ready(function($) {
             x_axis_label : false,
             y_axis_label : false,
             search_url: "http://localhost:9200/doaj/article/_search",
-            //data_series : [{"categories":["cc by","cc by nc nd","cc by nc sa","cc by","cc by nc nd","cc by nc sa"]},{"name":"Article License","data":[835,10,6]},{"name":"Journal Licence","data":[835,10,6]}],
-            //data_series : [{"categories":["Article License","Journal Licence"]},{"name":"cc by","data":[835,835]},{"name":"cc by nc nd","data":[10,10]},{"name":"cc by nc sa","data":[6,6]}],
             facets: [
                 {
                     "field" : "bibjson.journal.license.type.exact",
@@ -259,6 +257,9 @@ jQuery(document).ready(function($) {
 }
 .bar .reportview {
     height: 365px;
+}
+.rfooter{
+    padding-right: 10%;
 }
 </style>
 
@@ -312,6 +313,10 @@ jQuery(document).ready(function($) {
 </body>
 
 <footer>
-    Charts generated with <a href="http://www.highcharts.com/">Highcharts</a> and <a href="http://nvd3.org/">nvd3</a>
+    <div align="right" class="rfooter">
+        <a href="http://copyheart.org" style="color:black;">♡</a><a href="http://cottagelabs.com" style="color:black;">Cottage Labs</a>
+        <br>
+        Charts generated with <a href="http://www.highcharts.com/">Highcharts</a> and <a href="http://nvd3.org/">nvd3</a>
+    </div>
 </footer>
 </html>
