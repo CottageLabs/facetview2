@@ -248,7 +248,6 @@ function d3_renderPie(params) {
 function hc_convertMultiBar(params){
     var hc_data_series = [];
     var x_labels = {"categories": []};
-    hc_data_series.push(x_labels);
     for (var i = 0; i < params.data_series.length; i++) {
         var os = params.data_series[i];
         var ns = {};
@@ -260,6 +259,7 @@ function hc_convertMultiBar(params){
         }
         hc_data_series.push(ns)
     }
+    hc_data_series.push(x_labels);
     return hc_data_series
 }
 
@@ -300,7 +300,7 @@ function hc_renderMultiBar(params){
             text: titles.subtitle_text
         },
         xAxis: {
-            categories: data_series[0].categories,
+            categories: data_series.pop().categories,
             title: {
                 text: titles.x_axis_label
             }
@@ -323,7 +323,103 @@ function hc_renderMultiBar(params){
                 borderWidth: 0
             }
         },
-        series: data_series.slice(1)
+        series: data_series
+    });
+}
+
+function hc_convertStackedMultiBar(params){
+    var hc_data_series = [];
+    var x_labels = {"categories": []};
+    for (var i=0; i < params.data_series.length; i++) {
+        var os = params.data_series[i];
+        x_labels.categories.push(os["key"]);
+        for (var j = 0; j < os.values.length; j++) {
+            if (i==0){
+                var ns = {
+                "name" : os.values[j].label,
+                "data" : [os.values[j].value]
+                };
+                hc_data_series.push(ns)
+            }else{
+                hc_data_series[j]["data"].push(os.values[j].value)
+            }
+        }
+    }
+    hc_data_series.push(x_labels);
+    return hc_data_series
+}
+
+function hc_renderStackedMultiBar(params){
+    var data_series = params.data_series;
+    var selector = params.div_selector;
+    var options = params.options;
+    var be_3d = options.draw_3d;
+
+    // get chart titles, if any
+    var titles = get_chart_titles(params);
+
+    var chart = new Highcharts.Chart({
+        chart: {
+            renderTo: selector,
+            type: 'column',
+            options3d: {
+                enabled: be_3d,
+                alpha: 15,
+                beta: 15,
+                depth: 50,
+                viewDistance: 55
+            }
+        },
+        credits: {
+            enabled: false
+        },
+        title: {
+            text: titles.title_text
+        },
+        subtitle: {
+            text: titles.subtitle_text
+        },
+        xAxis: {
+            categories: data_series.pop().categories,
+            title: {
+                text: titles.x_axis_label
+            }
+        },
+        yAxis: {
+            min: 0,
+            stackLabels: {
+                enabled: true,
+                style: {
+                    fontWeight: 'bold',
+                    color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'
+                }
+            },
+            title: {
+                text: titles.y_axis_label
+            }
+        },
+        tooltip: {
+            formatter: function () {
+                return '<b>' + this.x + '</b><br/>' +
+                    this.series.name + ': ' + this.y + '<br/>' +
+                    'Total: ' + this.point.stackTotal;
+            }
+        },
+        plotOptions: {
+            column: {
+                pointPadding: 0.2,
+                borderWidth: 0,
+                stacking: 'normal',
+                dataLabels: {
+                    enabled: true,
+                    color: (Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white',
+                    style: {
+                        textShadow: '0 0 3px black'
+                    }
+                },
+            }
+        },
+        series: data_series
     });
 }
 
@@ -371,10 +467,6 @@ function d3_renderMultiBar(params) {
 
         return chart;
     });
-}
-
-function hc_convertHorizontalMultibar(params){
-    return hc_convertMultiBar(params)
 }
 
 function hc_renderHorizontalMultibar(params){
@@ -468,7 +560,7 @@ function get_chart_titles(params){
             "debug" : false,
             
             // type of graph to draw
-            // values: pie, multibar, horizontal_multibar
+            // values: pie, multibar, horizontal_multibar, stacked_multibar
             "type" : "pie",
 
             // the provider of the charts. either d3 or hc (for HighCharts)
@@ -494,10 +586,15 @@ function get_chart_titles(params){
             "multibar_y_tick_format" : ',.0f',
             "multibar_transition_duration" : 500,
             "multibar_controls" : false,
-            
+
+            // convert/render functions for stacked bar chart
+            "stacked_multibar_render" : hc_renderStackedMultiBar,
+            "stacked_multibar_convert" : hc_convertStackedMultiBar,
+            //"stacked_multibar_convert" : function(params) { return params.data_series },
+
             // convert/render functions for horizontal bar chart
             "horizontal_multibar_render" : hc_renderHorizontalMultibar,
-            "horizontal_multibar_convert" : hc_convertHorizontalMultibar,
+            "horizontal_multibar_convert" : hc_convertMultiBar,
             "horizontal_multibar_show_values" : true,
             "horizontal_multibar_tool_tips" : true,
             "horizontal_multibar_controls" : false,

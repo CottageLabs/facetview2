@@ -122,12 +122,13 @@ jQuery(document).ready(function($) {
             pie_donut: true,
             pie_show_labels: true,
             search_url: "http://localhost:9200/doaj/article/_search",
+            main_title : true,
             facets: [
                 {
-                    "field" : "bibjson.license.type.exact",
+                    "field" : "bibjson.journal.license.type.exact",
                     "size" : 100,
                     "display" : "Licence Type",
-                    "value_function" : function(value) { return value.toUpperCase() }
+                    "value_function" : function(value) { return value.toLowerCase() }
                 }
             ]
         });
@@ -141,13 +142,14 @@ jQuery(document).ready(function($) {
             pie_transition_duration: 800,
             pie_show_labels: true,
             pie_label_threshold: 0.05,
+            main_title : true,
             search_url: "http://localhost:9200/doaj/article/_search",
             facets: [
                 {
-                    "field" : "bibjson.license.type.exact",
+                    "field" : "bibjson.journal.license.type.exact",
                     "size" : 100,
                     "display" : "Licence Type",
-                    "value_function" : function(value) { return value.toUpperCase() }
+                    "value_function" : function(value) { return value.toLowerCase() }
                 }
             ]
         });
@@ -165,7 +167,7 @@ jQuery(document).ready(function($) {
             search_url: "http://localhost:9200/doaj/article/_search",
             facets: [
                 {
-                    "field" : "bibjson.license.type.exact",
+                    "field" : "bibjson.journal.license.type.exact",
                     "size" : 100,
                     "display" : "Article Licence",
                     "value_function" : function(value) { return value.toLowerCase().replace(/-/g, " ") }
@@ -191,9 +193,41 @@ jQuery(document).ready(function($) {
             search_url: "http://localhost:9200/doaj/article/_search",
             facets: [
                 {
-                    "field" : "bibjson.license.type.exact",
+                    "field" : "bibjson.journal.license.type.exact",
                     "size" : 100,
                     "display" : "Article Licence",
+                    "value_function" : function(value) { return value.toLowerCase().replace(/-/g, " ") }
+                },
+                {
+                    "field" : "bibjson.journal.license.type.exact",
+                    "size" : 100,
+                    "display" : "Journal Licence",
+                    "value_function" : function(value) { return value.toLowerCase().replace(/-/g, " ") }
+                }
+            ],
+            fixed_filters: [
+                {"term" : {"bibjson.journal.country.exact" : "GB"}}
+            ]
+        });
+    });
+
+    $('#report-view-stacked-facet_hc').each(function() {
+        $(this).report({
+            debug: true,
+            type: "stacked_multibar",
+            draw_3d: false,
+            main_title : "Licenses",
+            sub_title : "Proportion of total",
+            x_axis_label : false,
+            y_axis_label : false,
+            search_url: "http://localhost:9200/doaj/article/_search",
+            //data_series : [{"categories":["cc by","cc by nc nd","cc by nc sa","cc by","cc by nc nd","cc by nc sa"]},{"name":"Article License","data":[835,10,6]},{"name":"Journal Licence","data":[835,10,6]}],
+            //data_series : [{"categories":["Article License","Journal Licence"]},{"name":"cc by","data":[835,835]},{"name":"cc by nc nd","data":[10,10]},{"name":"cc by nc sa","data":[6,6]}],
+            facets: [
+                {
+                    "field" : "bibjson.journal.license.type.exact",
+                    "size" : 100,
+                    "display" : "Article License",
                     "value_function" : function(value) { return value.toLowerCase().replace(/-/g, " ") }
                 },
                 {
@@ -263,6 +297,15 @@ jQuery(document).ready(function($) {
     </div>
     <div class="span6">
         <div id="report-view-bar-facet_d3" class="bar"></div>
+    </div>
+</div>
+<hr>
+<div class="row-fluid">
+    <div class="span6">
+        <div id="report-view-stacked-facet_hc" class="bar"></div>
+    </div>
+    <div class="span6">
+        <div id="empty" class="bar"></div>
     </div>
 </div>
 <hr>
