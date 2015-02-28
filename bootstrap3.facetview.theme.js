@@ -709,10 +709,10 @@ function renderResultRecord(options, record) {
     // build up a full string representing the object
     var lines = '';
     for (var lineitem = 0; lineitem < display.length; lineitem++) {
-        line = "";
+        var line = "";
         for (var object = 0; object < display[lineitem].length; object++) {
             var thekey = display[lineitem][object]['field'];
-            var thevalue = ""
+            var thevalue = "";
             if (typeof options.results_render_callbacks[thekey] == 'function') {
                 // a callback is defined for this field so just call it
                 thevalue = options.results_render_callbacks[thekey].call(this, record);
@@ -720,10 +720,14 @@ function renderResultRecord(options, record) {
                 // split the key up into its parts, and work our way through the
                 // tree until we get to the node to display.  Note that this will only
                 // work with a string hierarchy of dicts - it can't have lists in it
-                parts = thekey.split('.');
-                var res = record
+                var parts = thekey.split('.');
+                var res = record;
                 for (var i = 0; i < parts.length; i++) {
-                    res = res[parts[i]]
+                    if (res) {
+                        res = res[parts[i]]
+                    } else {
+                        continue
+                    }
                 }
 
                 // just get a string representation of the object

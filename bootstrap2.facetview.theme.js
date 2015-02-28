@@ -634,24 +634,24 @@ function pageSlider(options) {
      */
 
     // ensure our starting points are integers, then we can do maths on them
-    var from = parseInt(options.from)
-    var size = parseInt(options.page_size)
+    var from = parseInt(options.from);
+    var size = parseInt(options.page_size);
 
     // calculate the human readable values we want
-    var to = from + size
-    from = from + 1 // zero indexed
+    var to = from + size;
+    from = from + 1; // zero indexed
     if (options.data.found < to) { to = options.data.found }
-    var total = options.data.found
+    var total = options.data.found;
 
     // forward and back-links, taking into account start and end boundaries
-    var backlink = '<a alt="previous" title="previous" class="facetview_decrement" style="color:#333;float:left;padding:0 40px 20px 20px;">&lt;</a>'
+    var backlink = '<a alt="previous" title="previous" class="facetview_decrement" style="color:#333;float:left;padding:0 40px 20px 20px;"><span class="icon icon-arrow-left"></span></a>'
     if (from < size) {
-        backlink = '<a class="facetview_decrement facetview_inactive_link" style="color:#333;float:left;padding:0 40px 20px 20px;">..</a>'
+        backlink = '<a class="facetview_decrement facetview_inactive_link" style="color:#333;float:left;padding:0 40px 20px 20px;">&nbsp;</a>'
     }
 
-    var nextlink = '<a alt="next" title="next" class="facetview_increment" style="color:#333;float:right;padding:0 20px 20px 40px;">&gt;</a>'
+    var nextlink = '<a alt="next" title="next" class="facetview_increment" style="color:#333;float:right;padding:0 20px 20px 40px;"><span class="icon icon-arrow-right"></span></a>'
     if (options.data.found <= to) {
-        nextlink = '<a class="facetview_increment facetview_inactive_link" style="color:#333;float:right;padding:0 20px 20px 40px;">..</a>'
+        nextlink = '<a class="facetview_increment facetview_inactive_link" style="color:#333;float:right;padding:0 20px 20px 40px;">&nbsp;</a>'
     }
 
     var meta = '<div style="font-size:20px;font-weight:bold;margin:5px 0 10px 0;padding:5px 0 5px 0;border:1px solid #eee;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;">'
@@ -692,10 +692,10 @@ function renderResultRecord(options, record) {
     // build up a full string representing the object
     var lines = '';
     for (var lineitem = 0; lineitem < display.length; lineitem++) {
-        line = "";
+        var line = "";
         for (var object = 0; object < display[lineitem].length; object++) {
             var thekey = display[lineitem][object]['field'];
-            var thevalue = ""
+            var thevalue = "";
             if (typeof options.results_render_callbacks[thekey] == 'function') {
                 // a callback is defined for this field so just call it
                 thevalue = options.results_render_callbacks[thekey].call(this, record);
@@ -703,10 +703,14 @@ function renderResultRecord(options, record) {
                 // split the key up into its parts, and work our way through the
                 // tree until we get to the node to display.  Note that this will only
                 // work with a string hierarchy of dicts - it can't have lists in it
-                parts = thekey.split('.');
-                var res = record
+                var parts = thekey.split('.');
+                var res = record;
                 for (var i = 0; i < parts.length; i++) {
-                    res = res[parts[i]]
+                    if (res) {
+                        res = res[parts[i]]
+                    } else {
+                        continue
+                    }
                 }
 
                 // just get a string representation of the object
