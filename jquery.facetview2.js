@@ -632,7 +632,7 @@ function getUrlVars() {
             
             // set the search order
             // NOTE: that this interface only supports single field ordering
-            sorting = options.sort
+            sorting = options.sort;
 
             for (var i=0; i < sorting.length; i=i+1) {
                 var so = sorting[i];
@@ -1036,7 +1036,7 @@ function getUrlVars() {
                 var visible = true;
                 if (facet.type === "terms") {
                     // terms facet becomes deactivated if the number of results is less than the deactivate threshold defined
-                    visible = facet.deactivate_threshold <= values.length
+                    visible = values.length > facet.deactivate_threshold;
                 } else if (facet.type === "range") {
                     // range facet becomes deactivated if there is a count of 0 in every value
                     var view = false;
@@ -1263,9 +1263,11 @@ function getUrlVars() {
                 // add the search controls
                 $(".facetview_search_options_container", obj).html(thesearchopts);
                 
-                // add the facets (empty at this stage)
+                // add the facets (empty at this stage), then set their visibility, which will fall back to the
+                // worst case scenario for visibility - it means facets won't disappear after the search, only reappear
                 if (thefacets != "") {
                     $('#facetview_filters', obj).html(thefacets);
+                    facetVisibility();
                 }
                 
                 // add the loading notification
@@ -1274,7 +1276,7 @@ function getUrlVars() {
                 }
                 
                 // populate all the page UI framework from the options
-                uiFromOptions(options)
+                uiFromOptions(options);
                 
                 // bind the search control triggers
                 $(".facetview_startagain", obj).bind("click", clickStartAgain);
