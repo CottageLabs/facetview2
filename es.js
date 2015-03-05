@@ -2,21 +2,55 @@
  * ELASTICSEARCH INTEGRATION
  *****************************************************************/
 
+// The reserved characters in elasticsearch query strings
+// Note that the "\" has to go first, as when these are substituted, that character
+// will get introduced as an escape character
+var esSpecialChars = ["\\", "+", "-", "=", "&&", "||", ">", "<", "!", "(", ")", "{", "}", "[", "]", "^", '"', "~", "*", "?", ":", "/"];
+
+// the reserved special character set with * and " removed, so that users can do quote searches and wildcards
+// if they want
+var esSpecialCharsSubSet = ["\\", "+", "-", "=", "&&", "||", ">", "<", "!", "(", ")", "{", "}", "[", "]", "^", "~", "?", ":", "/"];
+
+// values that have to be in even numbers in the query or they will be escaped
+var esPairs = ['"'];
+
+// FIXME: esSpecialChars is not currently used for encoding, but it would be worthwhile giving the facetview an option
+// to allow/disallow specific values, but that requires a much better (automated) understanding of the
+// query DSL
+
 var elasticsearch_distance_units = ["km", "mi", "miles", "in", "inch", "yd", "yards", "kilometers", "mm", "millimeters", "cm", "centimeters", "m", "meters"]
 
 function optionsFromQuery(query) {
 
     function stripDistanceUnits(val) {
         for (var i=0; i < elasticsearch_distance_units.length; i=i+1) {
-            var unit = elasticsearch_distance_units[i]
+            var unit = elasticsearch_distance_units[i];
             if (endsWith(val, unit)) {
                 return val.substring(0, val.length - unit.length)
             }
         }
         return val
     }
+
+    function unescapeQueryString(val) {
+        function escapeRegExp(string) {
+            return string.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
+        }
+
+        function unReplaceAll(string, find) {
+            return string.replace(new RegExp("\\\\(" + escapeRegExp(find) + ")", 'g'), "$1");
+        }
+
+        // Note we use the full list of special chars
+        for (var i = 0; i < esSpecialChars.length; i++) {
+            var char = esSpecialChars[i];
+            val = unReplaceAll(val, char)
+        }
+
+        return val;
+    }
     
-    var opts = {}
+    var opts = {};
 
     // FIXME: note that fields are not supported here
 
@@ -31,14 +65,14 @@ function optionsFromQuery(query) {
     // get hold of the bool query if it is there
     // and get hold of the query string and default operator if they have been provided
     if (query.query) {
-        var sq = query.query
-        var must = []
-        var qs = undefined
+        var sq = query.query;
+        var must = [];
+        var qs = undefined;
         
         // if this is a filtered query, pull must and qs out of the filter
         // otherwise the root of the query is the query_string object
         if (sq.filtered) {
-            must = sq.filtered.filter.bool.must
+            must = sq.filtered.filter.bool.must;
             qs = sq.filtered.query
         } else {
             qs = sq
@@ -46,18 +80,18 @@ function optionsFromQuery(query) {
         
         // go through each clause in the must and pull out the options
         if (must.length > 0) {
-            opts["_active_filters"] = {}
+            opts["_active_filters"] = {};
             opts["_selected_operators"] = {}
         }
         for (var i = 0; i < must.length; i++) {
-            var clause = must[i]
+            var clause = must[i];
             
             // could be a term query (implies AND on this field)
             if ("term" in clause) {
                 for (var field in clause.term) {
                     if (clause.term.hasOwnProperty(field)) {
-                        opts["_selected_operators"][field] = "AND"
-                        var value = clause.term[field]
+                        opts["_selected_operators"][field] = "AND";
+                        var value = clause.term[field];
                         if (!(field in opts["_active_filters"])) {
                             opts["_active_filters"][field] = []
                         }
@@ -69,8 +103,8 @@ function optionsFromQuery(query) {
             // could be a terms query (implies OR on this field)
             if ("terms" in clause) {
                 for (var field=0; field < clause.terms.length; field=field+1) {
-                    opts["_selected_operators"][field] = "OR"
-                    var values = clause.terms[field]
+                    opts["_selected_operators"][field] = "OR";
+                    var values = clause.terms[field];
                     if (!(field in opts["_active_filters"])) {
                         opts["_active_filters"][field] = []
                     }
@@ -81,8 +115,8 @@ function optionsFromQuery(query) {
             // could be a range query
             if ("range" in clause) {
                 for (var field=0; field < clause.range.length; field=field+1) {
-                    var rq = clause.range[field]
-                    var range = {}
+                    var rq = clause.range[field];
+                    var range = {};
                     if (rq.lt) { range["to"] = rq.lt }
                     if (rq.gte) { range["from"] = rq.gte }
                     opts["_active_filters"][field] = range
@@ -91,10 +125,10 @@ function optionsFromQuery(query) {
             
             // cound be a geo distance query
             if ("geo_distance_range" in clause) {
-                var gdr = clause.geo_distance_range
+                var gdr = clause.geo_distance_range;
                 
                 // the range is defined at the root of the range filter
-                var range = {}
+                var range = {};
                 if ("lt" in gdr) { range["to"] = stripDistanceUnits(gdr.lt) }
                 if ("gte" in gdr) { range["from"] = stripDistanceUnits(gdr.gte) }
                 
@@ -113,9 +147,9 @@ function optionsFromQuery(query) {
         
         if (qs) {
             if (qs.query_string) {
-                var string = qs.query_string.query
-                var field = qs.query_string.default_field
-                var op = qs.query_string.default_operator
+                var string = unescapeQueryString(qs.query_string.query);
+                var field = qs.query_string.default_field;
+                var op = qs.query_string.default_operator;
                 if (string) { opts["q"] = string }
                 if (field) { opts["searchfield"] = field }
                 if (op) { opts["default_operator"] = op }
@@ -129,7 +163,7 @@ function optionsFromQuery(query) {
 }
 
 function getFilters(params) {
-    var options = params.options
+    var options = params.options;
 
     // function to get the right facet from the options, based on the name
     function selectFacet(name) {
@@ -146,41 +180,41 @@ function getFilters(params) {
     function termsFilter(facet, filter_list) {
         if (facet.logic === "AND") {
             for (var i=0; i < filter_list.length; i=i+1) {
-                var value = filter_list[i]
-                var tq = {"term" : {}}
-                tq["term"][facet.field] = value
+                var value = filter_list[i];
+                var tq = {"term" : {}};
+                tq["term"][facet.field] = value;
                 return tq
             }
         } else if (facet.logic === "OR") {
-            var tq = {"terms" : {}}
-            tq["terms"][facet.field] = filter_list
+            var tq = {"terms" : {}};
+            tq["terms"][facet.field] = filter_list;
             return tq
         }
     }
 
     function rangeFilter(facet, value) {
-        var rq = {"range" : {}}
-        rq["range"][facet.field] = {}
+        var rq = {"range" : {}};
+        rq["range"][facet.field] = {};
         if (value.to) { rq["range"][facet.field]["lt"] = value.to }
         if (value.from) { rq["range"][facet.field]["gte"] = value.from }
         return rq
     }
 
     function geoFilter(facet, value) {
-        var gq = {"geo_distance_range" : {}}
+        var gq = {"geo_distance_range" : {}};
         if (value.to) { gq["geo_distance_range"]["lt"] = value.to + facet.unit }
         if (value.from) { gq["geo_distance_range"]["gte"] = value.from + facet.unit }
-        gq["geo_distance_range"][facet.field] = [facet.lon, facet.lat] // note the order of lon/lat to comply with GeoJSON
+        gq["geo_distance_range"][facet.field] = [facet.lon, facet.lat]; // note the order of lon/lat to comply with GeoJSON
         return gq
     }
 
     // function to make the relevant filters from the filter definition
     function makeFilters(filter_definition) {
-        var filters = []
+        var filters = [];
         for (var field in filter_definition) {
             if (filter_definition.hasOwnProperty(field)) {
-                var facet = selectFacet(field)
-                var filter_list = filter_definition[field]
+                var facet = selectFacet(field);
+                var filter_list = filter_definition[field];
 
                 if (facet.type === "terms") {
                     filters.push(termsFilter(facet, filter_list))
@@ -196,7 +230,7 @@ function getFilters(params) {
 
     // read any filters out of the options and create an array of "must" queries which
     // will constrain the search results
-    var filter_must = []
+    var filter_must = [];
     if (options.active_filters) {
         filter_must = filter_must.concat(makeFilters(options.active_filters))
     }
@@ -212,17 +246,17 @@ function getFilters(params) {
 
 function elasticSearchQuery(params) {
     // break open the parameters
-    var options = params.options
-    var include_facets = "include_facets" in params ? params.include_facets : true
-    var include_fields = "include_fields" in params ? params.include_fields : true
+    var options = params.options;
+    var include_facets = "include_facets" in params ? params.include_facets : true;
+    var include_fields = "include_fields" in params ? params.include_fields : true;
 
-    var filter_must = getFilters({"options" : options})
+    var filter_must = getFilters({"options" : options});
 
     // search string and search field produce a query_string query element
-    var querystring = options.q
-    var searchfield = options.searchfield
-    var default_operator = options.default_operator
-    var ftq = undefined
+    var querystring = options.q;
+    var searchfield = options.searchfield;
+    var default_operator = options.default_operator;
+    var ftq = undefined;
     if (querystring) {
         ftq = {'query_string' : { 'query': fuzzify(querystring, options.default_freetext_fuzzify) }};
         if (searchfield) {
@@ -237,9 +271,9 @@ function elasticSearchQuery(params) {
     
     // if there are filter constraints (filter_must) then we create a filtered query,
     // otherwise make a normal query
-    var qs = undefined
+    var qs = undefined;
     if (filter_must.length > 0) {
-        qs = {"query" : {"filtered" : {"filter" : {"bool" : {"must" : filter_must}}}}}
+        qs = {"query" : {"filtered" : {"filter" : {"bool" : {"must" : filter_must}}}}};
         qs.query.filtered["query"] = ftq;
     } else {
         qs = {"query" : ftq}
@@ -267,34 +301,34 @@ function elasticSearchQuery(params) {
     if (include_facets) {
         qs['facets'] = {};
         for (var item = 0; item < options.facets.length; item++) {
-            var defn = options.facets[item]
-            var size = defn.size
+            var defn = options.facets[item];
+            var size = defn.size;
             
             // add a bunch of extra values to the facets to deal with the shard count issue
             size += options.elasticsearch_facet_inflation 
             
-            var facet = {}
+            var facet = {};
             if (defn.type === "terms") {
                 facet["terms"] = {"field" : defn["field"], "size" : size, "order" : defn["order"]}
             } else if (defn.type === "range") {
-                var ranges = []
+                var ranges = [];
                 for (var r=0; r < defn["range"].length; r=r+1) {
-                    var def = defn["range"][r]
-                    var robj = {}
+                    var def = defn["range"][r];
+                    var robj = {};
                     if (def.to) { robj["to"] = def.to }
                     if (def.from) { robj["from"] = def.from }
                     ranges.push(robj)
                 }
-                facet["range"] = { }
+                facet["range"] = { };
                 facet["range"][defn.field] = ranges
             } else if (defn.type === "geo_distance") {
                 facet["geo_distance"] = {}
-                facet["geo_distance"][defn["field"]] = [defn.lon, defn.lat] // note that the order is lon/lat because of GeoJSON
-                facet["geo_distance"]["unit"] = defn.unit
-                var ranges = []
+                facet["geo_distance"][defn["field"]] = [defn.lon, defn.lat]; // note that the order is lon/lat because of GeoJSON
+                facet["geo_distance"]["unit"] = defn.unit;
+                var ranges = [];
                 for (var r=0; r < defn["distance"].length; r=r+1) {
-                    var def = defn["distance"][r]
-                    var robj = {}
+                    var def = defn["distance"][r];
+                    var robj = {};
                     if (def.to) { robj["to"] = def.to }
                     if (def.from) { robj["from"] = def.from }
                     ranges.push(robj)
@@ -319,7 +353,7 @@ function elasticSearchQuery(params) {
 }
 
 function fuzzify(querystr, default_freetext_fuzzify) {
-    var rqs = querystr
+    var rqs = querystr;
     if (default_freetext_fuzzify !== undefined) {
         if (default_freetext_fuzzify == "*" || default_freetext_fuzzify == "~") {
             if (querystr.indexOf('*') === -1 && querystr.indexOf('~') === -1 && querystr.indexOf(':') === -1) {
@@ -332,29 +366,57 @@ function fuzzify(querystr, default_freetext_fuzzify) {
                         default_freetext_fuzzify == "*" ? oip = "*" + oip : false;
                         pq += oip + " ";
                     }
-                };
+                }
                 rqs = pq;
-            };
-        };
-    };
+            }
+        }
+    }
     return rqs;
-};
-
-var elasticsearch_special_chars = ['(', ')', '{', '}', '[', ']', '^' , ':', '/'];
+}
 
 function jsonStringEscape(key, value) {
-    if (key == "query" && typeof(value) == 'string') {
-        for (var each = 0; each < elasticsearch_special_chars.length; each++) {
-            value = value.replace(elasticsearch_special_chars[each],'\\' + elasticsearch_special_chars[each], 'g');
-        }
-        return value;
+
+    function escapeRegExp(string) {
+        return string.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
     }
+
+    function replaceAll(string, find, replace) {
+      return string.replace(new RegExp(escapeRegExp(find), 'g'), replace);
+    }
+
+    function paired(string, pair) {
+        var matches = (string.match(new RegExp(escapeRegExp(pair), "g"))) || []
+        return matches.length % 2 === 0;
+    }
+
+    // if we are looking at the query string, make sure that it is escaped
+    // (note that this precludes the use of queries like "name:bob", as the ":" would
+    // get escaped)
+    if (key === "query" && typeof(value) === 'string') {
+
+        var scs = esSpecialCharsSubSet.slice(0);
+
+        // first check for pairs
+        for (var i = 0; i < esPairs.length; i++) {
+            var char = esPairs[i];
+            if (!paired(value, char)) {
+                scs.push(char);
+            }
+        }
+
+        for (var i = 0; i < scs.length; i++) {
+            var char = scs[i];
+            value = replaceAll(value, char, "\\" + char);
+        }
+
+    }
+
     return value;
-};
+}
 
 function serialiseQueryObject(qs) {
     return JSON.stringify(qs, jsonStringEscape);
-};
+}
 
 // closure for elastic search success, which ultimately calls
 // the user's callback
@@ -365,11 +427,11 @@ function elasticSearchSuccess(callback) {
             "start" : "",
             "found" : data.hits.total,
             "facets" : {}
-        }
+        };
         
         // load the results into the records part of the result object
         for (var item = 0; item < data.hits.hits.length; item++) {
-            var res = data.hits.hits[item]
+            var res = data.hits.hits[item];
             if ("fields" in res) {
                 // partial_fields and script_fields are also included here - no special treatment
                 resultobj.records.push(res.fields)
@@ -380,21 +442,21 @@ function elasticSearchSuccess(callback) {
         
         for (var item in data.facets) {
             if (data.facets.hasOwnProperty(item)) {
-                var facet = data.facets[item]
+                var facet = data.facets[item];
                 // handle any terms facets
                 if ("terms" in facet) {
-                    var terms = facet["terms"]
-                    resultobj["facets"][item] = terms
+                    var terms = facet["terms"];
+                    resultobj["facets"][item] = terms;
                 // handle any range/geo_distance_range facets
                 } else if ("ranges" in facet) {
-                    var range = facet["ranges"]
-                    resultobj["facets"][item] = range
+                    var range = facet["ranges"];
+                    resultobj["facets"][item] = range;
                 // handle statistical facets
                 } else if (facet["_type"] === "statistical") {
-                    resultobj["facets"][item] = facet
+                    resultobj["facets"][item] = facet;
                 // handle terms_stats
                 } else if (facet["_type"] === "terms_stats") {
-                    var terms = facet["terms"]
+                    var terms = facet["terms"];
                     resultobj["facets"][item] = terms
                 }
             }
@@ -406,14 +468,14 @@ function elasticSearchSuccess(callback) {
 
 function doElasticSearchQuery(params) {
     // extract the parameters of the request
-    var success_callback = params.success
-    var complete_callback = params.complete
-    var search_url = params.search_url
-    var queryobj = params.queryobj
-    var datatype = params.datatype
+    var success_callback = params.success;
+    var complete_callback = params.complete;
+    var search_url = params.search_url;
+    var queryobj = params.queryobj;
+    var datatype = params.datatype;
     
     // serialise the query
-    var querystring = serialiseQueryObject(queryobj)
+    var querystring = serialiseQueryObject(queryobj);
     
     // make the call to the elasticsearch web service
     $.ajax({
