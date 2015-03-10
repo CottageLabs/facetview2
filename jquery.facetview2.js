@@ -273,6 +273,7 @@ function getUrlVars() {
                 "type": "term|range|geo_distance|statistical|date_histogram",       // the kind of facet this will be
                 "open" : true|false,                                                // whether the facet should be open or closed (initially)
                 "hidden" : true|false                                               // whether the facet should be displayed at all (e.g. you may just want the data for a callback)
+                "disabled" : true|false                                             // whether the facet should be acted upon in any way.  This might be useful if you want to enable/disable facets under different circumstances via a callback
                 
                 // terms facet only
                 
@@ -640,6 +641,7 @@ function getUrlVars() {
                 if (!("interval" in facet)) { facet["interval"] = provided_options.default_date_histogram_interval }
                 if (!("hide_empty_date_bin" in facet)) { facet["hide_empty_date_bin"] = provided_options.default_hide_empty_date_bin }
                 if (!("sort" in facet)) { facet["sort"] = provided_options.default_date_histogram_sort }
+                if (!("disabled" in facet)) { facet["disabled"] = false }   // no default setter for this - if you don't specify disabled, they are not disabled
             }
             
             return provided_options
@@ -1071,45 +1073,47 @@ function getUrlVars() {
             $('.facetview_filters', obj).each(function() {
                 var facet = selectFacet(options, $(this).attr('data-href'));
                 var values = "values" in facet ? facet["values"] : [];
-                var visible = true;
-                if (facet.type === "terms") {
-                    // terms facet becomes deactivated if the number of results is less than the deactivate threshold defined
-                    visible = values.length > facet.deactivate_threshold;
-                } else if (facet.type === "range") {
-                    // range facet becomes deactivated if there is a count of 0 in every value
-                    var view = false;
-                    for (var i=0; i < values.length; i=i+1) {
-                        var val = values[i];
-                        if (val.count > 0) {
-                            view = true;
-                            break
+                var visible = !facet.disabled;
+                if (!facet.disabled) {
+                    if (facet.type === "terms") {
+                        // terms facet becomes deactivated if the number of results is less than the deactivate threshold defined
+                        visible = values.length > facet.deactivate_threshold;
+                    } else if (facet.type === "range") {
+                        // range facet becomes deactivated if there is a count of 0 in every value
+                        var view = false;
+                        for (var i = 0; i < values.length; i = i + 1) {
+                            var val = values[i];
+                            if (val.count > 0) {
+                                view = true;
+                                break
+                            }
                         }
-                    }
-                    visible = view
-                } else if (facet.type === "geo_distance") {
-                    // distance facet becomes deactivated if there is a count of 0 in every value
-                    var view = false;
-                    for (var i=0; i < values.length; i=i+1) {
-                        var val = values[i];
-                        if (val.count > 0) {
-                            view = true;
-                            break
+                        visible = view
+                    } else if (facet.type === "geo_distance") {
+                        // distance facet becomes deactivated if there is a count of 0 in every value
+                        var view = false;
+                        for (var i = 0; i < values.length; i = i + 1) {
+                            var val = values[i];
+                            if (val.count > 0) {
+                                view = true;
+                                break
+                            }
                         }
-                    }
-                    visible = view
-                } else if (facet.type === "date_histogram") {
-                    // date histogram facet becomes deactivated if there is a count of 0 in every value
-                    var view = false;
-                    for (var i=0; i < values.length; i=i+1) {
-                        var val = values[i];
-                        if (val.count > 0) {
-                            view = true;
-                            break
+                        visible = view
+                    } else if (facet.type === "date_histogram") {
+                        // date histogram facet becomes deactivated if there is a count of 0 in every value
+                        var view = false;
+                        for (var i = 0; i < values.length; i = i + 1) {
+                            var val = values[i];
+                            if (val.count > 0) {
+                                view = true;
+                                break
+                            }
                         }
+                        visible = view
                     }
-                    visible = view
+                    // FIXME: statistical facet?
                 }
-                // FIXME: statistical facet?
 
                 options.behaviour_facet_visibility(options, obj, facet, visible)
             });
@@ -1202,6 +1206,10 @@ function getUrlVars() {
             for (var each = 0; each < options.facets.length; each++) {
                 // get the facet, the field name and the size
                 var facet = options.facets[each];
+
+                // no need to populate any disabled facets
+                if (facet.disabled) { continue }
+
                 var field = facet['field'];
                 var size = facet.hasOwnProperty("size") ? facet["size"] : options.default_facet_size;
                 
@@ -1249,6 +1257,18 @@ function getUrlVars() {
             options.behaviour_finished_searching(options, obj);
             options.searching = false;
         }
+
+        function pruneActiveFilters() {
+            for (var i = 0; i < options.facets.length; i++) {
+                var facet = options.facets[i];
+                if (facet.disabled) {
+                    if (facet.field in options.active_filters) {
+                        delete options.active_filters[facet.field];
+                    }
+                }
+            }
+            publishSelectedFilters();
+        }
         
         function doSearch() {
             // FIXME: does this have any weird side effects?
@@ -1266,7 +1286,11 @@ function getUrlVars() {
             
             // trigger any searching notification behaviour
             options.behaviour_show_searching(options, obj);
-            
+
+            // remove from the active filters any whose facets are disabled
+            // (this may have happened during the pre-search callback, for example)
+            pruneActiveFilters();
+
             // make the search query
             var queryobj = elasticSearchQuery({"options" : options});
             options.queryobj = queryobj
@@ -1297,10 +1321,10 @@ function getUrlVars() {
         var options = $.fn.facetview.options;
         
         // render the facetview frame which will then be populated
-        thefacetview = options.render_the_facetview(options);
-        thesearchopts = options.render_search_options(options);
-        thefacets = options.render_facet_list(options);
-        searching = options.render_searching_notification(options);
+        var thefacetview = options.render_the_facetview(options);
+        var thesearchopts = options.render_search_options(options);
+        var thefacets = options.render_facet_list(options);
+        var searching = options.render_searching_notification(options);
         
         // now create the plugin on the page for each div
         var obj = undefined;

@@ -182,6 +182,9 @@ function facetList(options) {
                 continue;
             }
 
+            // note that we do render disabled facets, so that they are available for enabling/disabling
+            // by callbacks
+
             var type = facet.type ? facet.type : "terms"
             if (type === "terms") {
                 thefilters += options.render_terms_facet(facet, options)

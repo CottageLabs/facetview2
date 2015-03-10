@@ -230,6 +230,11 @@ function getFilters(params) {
         for (var field in filter_definition) {
             if (filter_definition.hasOwnProperty(field)) {
                 var facet = selectFacet(field);
+
+                // FIXME: is this the right behaviour?
+                // ignore any filters from disabled facets
+                if (facet.disabled) { continue }
+
                 var filter_list = filter_definition[field];
 
                 if (facet.type === "terms") {
@@ -320,6 +325,8 @@ function elasticSearchQuery(params) {
         qs['facets'] = {};
         for (var item = 0; item < options.facets.length; item++) {
             var defn = options.facets[item];
+            if (defn.disabled) { continue }
+
             var size = defn.size;
             
             // add a bunch of extra values to the facets to deal with the shard count issue
@@ -463,6 +470,7 @@ function elasticSearchSuccess(callback) {
         for (var item in data.facets) {
             if (data.facets.hasOwnProperty(item)) {
                 var facet = data.facets[item];
+
                 // handle any terms facets
                 if ("terms" in facet) {
                     var terms = facet["terms"];
