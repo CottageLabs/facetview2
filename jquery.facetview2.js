@@ -270,7 +270,7 @@ function getUrlVars() {
             {
                 "field" : "<elasticsearch field>"                                   // field upon which to facet
                 "display" : "<display name>",                                       // display name for the UI
-                "type": "term|range|geo_distance|statistical",                      // the kind of facet this will be
+                "type": "term|range|geo_distance|statistical|date_histogram",       // the kind of facet this will be
                 "open" : true|false,                                                // whether the facet should be open or closed (initially)
                 "hidden" : true|false                                               // whether the facet should be displayed at all (e.g. you may just want the data for a callback)
                 
@@ -282,6 +282,7 @@ function getUrlVars() {
                 "deactivate_threshold" : <num>,                                     // number of facet terms below which the facet is disabled
                 "hide_inactive" : true|false,                                       // whether to hide or just disable the facet if below deactivate threshold
                 "value_function" : <function>,                                      // function to be called on each value before display
+                "controls" : true|false                                             // should the facet sort/size/bool controls be shown?
                 
                 // range facet only
                 
@@ -299,7 +300,12 @@ function getUrlVars() {
                 "unit" : "<unit of distance, e.g. km or mi>"                        // unit to calculate distances in (e.g. km or mi)
                 "lat" : <latitude>                                                  // latitude from which to measure distances
                 "lon" : <longitude>                                                 // longitude from which to measure distances
-                
+
+                // date histogram facet only
+                "interval" : "year, quarter, month, week, day, hour, minute ,second"  // period to use for date histogram
+                "sort" : "asc|desc",                                                // which ordering to use for date histogram
+                "hide_empty_date_bin" : true|false                                  // whether to suppress display of date range with no values
+
                 // admin use only
                 
                 "values" : <object>                                                 // the values associated with a successful query on this facet
@@ -321,12 +327,17 @@ function getUrlVars() {
             "default_facet_order" : "count",
             "default_facet_hide_inactive" : false,
             "default_facet_deactivate_threshold" : 0, // equal to or less than this number will deactivate the facet
+            "default_facet_controls" : true,
             "default_hide_empty_range" : true,
             "default_hide_empty_distance" : true,
             "default_distance_unit" : "km",
             "default_distance_lat" : 51.4768,       // Greenwich meridian (give or take a few decimal places)
             "default_distance_lon" : 0.0,           //
-            
+            "default_date_histogram_interval" : "year",
+            "default_hide_empty_date_bin" : true,
+            "default_date_histogram_sort" : "asc",
+
+
             ///// search bar configuration /////////////////////////////
             
             // list of options by which the search results can be sorted
@@ -432,6 +443,11 @@ function getUrlVars() {
             "render_geo_facet" : renderGeoFacet,                // overall framework for a geo distance facet
             "render_geo_facet_values" : renderGeoFacetValues,   // the list of geo distance facet values
             "render_geo_facet_result" : renderGeoFacetResult,   // individual geo distance facet values
+
+            // render the date histogram facet
+            "render_date_histogram_facet" : renderDateHistogramFacet,
+            "render_date_histogram_values" : renderDateHistogramValues,
+            "render_date_histogram_result" : renderDateHistogramResult,
             
             // render any searching notification (which will then be shown/hidden as needed)
             "render_searching_notification" : searchingNotification,
@@ -453,6 +469,9 @@ function getUrlVars() {
             
             // render a geo distance filter interface component (e.g. the filter name and the human readable description of the selected range)
             "render_active_geo_filter" : renderActiveGeoFilter,
+
+            // render a date histogram/range interface component (e.g. the filter name and the human readable description of the selected range)
+            "render_active_date_histogram_filter" : renderActiveDateHistogramFilter,
             
             ///// configs for standard render functions /////////////////////////////
             
@@ -605,18 +624,22 @@ function getUrlVars() {
                 var facet = provided_options.facets[i];
                 if (!("type" in facet)) { facet["type"] = provided_options.default_facet_type }
                 if (!("open" in facet)) { facet["open"] = provided_options.default_facet_open }
-                if (!("hidden" in facet)) { facet["hiddel"] = provided_options.default_facet_hidden }
+                if (!("hidden" in facet)) { facet["hidden"] = provided_options.default_facet_hidden }
                 if (!("size" in facet)) { facet["size"] = provided_options.default_facet_size }
                 if (!("logic" in facet)) { facet["logic"] = provided_options.default_facet_operator }
                 if (!("order" in facet)) { facet["order"] = provided_options.default_facet_order }
                 if (!("hide_inactive" in facet)) { facet["hide_inactive"] = provided_options.default_facet_hide_inactive }
                 if (!("deactivate_threshold" in facet)) { facet["deactivate_threshold"] = provided_options.default_facet_deactivate_threshold }
+                if (!("controls" in facet)) { facet["controls"] = provided_options.default_facet_controls }
                 if (!("hide_empty_range" in facet)) { facet["hide_empty_range"] = provided_options.default_hide_empty_range }
                 if (!("hide_empty_distance" in facet)) { facet["hide_empty_distance"] = provided_options.default_hide_empty_distance }
                 if (!("unit" in facet)) { facet["unit"] = provided_options.default_distance_unit }
                 if (!("lat" in facet)) { facet["lat"] = provided_options.default_distance_lat }
                 if (!("lon" in facet)) { facet["lon"] = provided_options.default_distance_lon }
                 if (!("value_function" in facet)) { facet["value_function"] = function(value) { return value } }
+                if (!("interval" in facet)) { facet["interval"] = provided_options.default_date_histogram_interval }
+                if (!("hide_empty_date_bin" in facet)) { facet["hide_empty_date_bin"] = provided_options.default_hide_empty_date_bin }
+                if (!("sort" in facet)) { facet["sort"] = provided_options.default_date_histogram_sort }
             }
             
             return provided_options
@@ -896,6 +919,8 @@ function getUrlVars() {
                 frag = options.render_range_facet_values(options, facet)
             } else if (facet.type === "geo_distance") {
                 frag = options.render_geo_facet_values(options, facet)
+            } else if (facet.type === "date_histogram") {
+                frag = options.render_date_histogram_values(options, facet)
             }
             // FIXME: how to display statistical facet?
             if (frag) {
@@ -934,6 +959,11 @@ function getUrlVars() {
                 var to = $(this).attr("data-to");
                 if (from) { value["from"] = from }
                 if (to) { value["to"] = to }
+            } else if (facet.type === "date_histogram") {
+                var from = $(this).attr("data-from");
+                var to = $(this).attr("data-to");
+                if (from) { value["from"] = from }
+                if (to) { value["to"] = to }
             }
             // FIXME: how to handle clicks on statistical facet (if that even makes sense) or terms_stats facet
             
@@ -968,7 +998,11 @@ function getUrlVars() {
             } else if (facet.type === "geo_distance") {
                 // NOTE: we are implicitly stating that geo distance range filters cannot be OR'd
                 options.active_filters[field] = value
+            } else if (facet.type === "date_histogram") {
+                // NOTE: we are implicitly stating that date histogram filters cannot be OR'd
+                options.active_filters[field] = value
             }
+
             // FIXME: statistical facet support here?
         }
         
@@ -984,6 +1018,8 @@ function getUrlVars() {
                 } else if (facet.type === "range") {
                     delete options.active_filters[field]
                 } else if (facet.type === "geo_distance") {
+                    delete options.active_filters[field]
+                } else if (facet.type === "date_histogram") {
                     delete options.active_filters[field]
                 }
                 // FIXME: statistical facet support?
@@ -1011,6 +1047,8 @@ function getUrlVars() {
                 var to = $(this).attr("data-to");
                 if (from) { value["from"] = from }
                 if (to) { value["to"] = to }
+            } else if (facet.type == "date_histogram") {
+                value = $(this).attr("data-from");
             }
             // FIXMe: statistical facet
             
@@ -1040,8 +1078,8 @@ function getUrlVars() {
                 } else if (facet.type === "range") {
                     // range facet becomes deactivated if there is a count of 0 in every value
                     var view = false;
-                    for (var i=0; i < facet.values.length; i=i+1) {
-                        var val = facet.values[i];
+                    for (var i=0; i < values.length; i=i+1) {
+                        var val = values[i];
                         if (val.count > 0) {
                             view = true;
                             break
@@ -1051,8 +1089,19 @@ function getUrlVars() {
                 } else if (facet.type === "geo_distance") {
                     // distance facet becomes deactivated if there is a count of 0 in every value
                     var view = false;
-                    for (var i=0; i < facet.values.length; i=i+1) {
-                        var val = facet.values[i];
+                    for (var i=0; i < values.length; i=i+1) {
+                        var val = values[i];
+                        if (val.count > 0) {
+                            view = true;
+                            break
+                        }
+                    }
+                    visible = view
+                } else if (facet.type === "date_histogram") {
+                    // date histogram facet becomes deactivated if there is a count of 0 in every value
+                    var view = false;
+                    for (var i=0; i < values.length; i=i+1) {
+                        var val = values[i];
                         if (val.count > 0) {
                             view = true;
                             break
@@ -1154,17 +1203,21 @@ function getUrlVars() {
                 // get the facet, the field name and the size
                 var facet = options.facets[each];
                 var field = facet['field'];
-                var size = facet["size"] ? facet["size"] : options.default_facet_size
+                var size = facet.hasOwnProperty("size") ? facet["size"] : options.default_facet_size;
                 
                 // get the records to be displayed, limited by the size and record against
                 // the options object
                 var records = results["facets"][field];
-                // special rule for handling statistical facets
-                if (records.hasOwnProperty("_type") && records["_type"] == "statistical") {
+                // special rule for handling statistical, range and histogram facets
+                if (records.hasOwnProperty("_type") && records["_type"] === "statistical") {
                     facet["values"] = records
                 } else {
                     if (!records) { records = [] }
-                    facet["values"] = records.slice(0, size)
+                    if (size) { // this means you can set the size of a facet to something false (like, false, or 0, and size will be ignored)
+                        facet["values"] = records.slice(0, size)
+                    } else {
+                        facet["values"] = records
+                    }
                 }
 
                 // set the results on the page
@@ -1223,7 +1276,7 @@ function getUrlVars() {
             }
             
             // augment the URL bar if possible, and the share/save link
-            urlFromOptions()
+            urlFromOptions();
             
             // issue the query to elasticsearch
             doElasticSearchQuery({

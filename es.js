@@ -55,7 +55,7 @@ function optionsFromQuery(query) {
     // FIXME: note that fields are not supported here
 
     // from position
-    if (query.from) { opts["from"] = query.from }
+    if (query.hasOwnProperty("from")) { opts["from"] = query.from }
     
     // page size
     if (query.size) { opts["page_size"] = query.size }
@@ -112,14 +112,22 @@ function optionsFromQuery(query) {
                 }
             }
             
-            // could be a range query
+            // could be a range query (which may in turn be a range or a date histogram facet)
             if ("range" in clause) {
-                for (var field=0; field < clause.range.length; field=field+1) {
-                    var rq = clause.range[field];
+                // get the field that we're ranging on
+                var r = clause.range;
+                var fields = Object.keys(r);
+                var field = false;
+                if (fields.length > 0) {
+                    field = fields[0];
+                }
+
+                if (field) {
+                    var rparams = r[field];
                     var range = {};
-                    if (rq.lt) { range["to"] = rq.lt }
-                    if (rq.gte) { range["from"] = rq.gte }
-                    opts["_active_filters"][field] = range
+                    if ("lt" in rparams) { range["to"] = rparams.lt }
+                    if ("gte" in rparams) { range["from"] = rparams.gte }
+                    opts["_active_filters"][field] = range;
                 }
             }
             
@@ -208,6 +216,14 @@ function getFilters(params) {
         return gq
     }
 
+    function dateHistogramFilter(facet, value) {
+        var rq = {"range" : {}};
+        rq["range"][facet.field] = {};
+        if (value.to) { rq["range"][facet.field]["lt"] = value.to }
+        if (value.from) { rq["range"][facet.field]["gte"] = value.from }
+        return rq
+    }
+
     // function to make the relevant filters from the filter definition
     function makeFilters(filter_definition) {
         var filters = [];
@@ -220,8 +236,10 @@ function getFilters(params) {
                     filters.push(termsFilter(facet, filter_list))
                 } else if (facet.type === "range") {
                     filters.push(rangeFilter(facet, filter_list))
-                } else if (facet.type == "geo_distance") {
+                } else if (facet.type === "geo_distance") {
                     filters.push(geoFilter(facet, filter_list))
+                } else if (facet.type == "date_histogram") {
+                    filters.push(dateHistogramFilter(facet, filter_list))
                 }
             }
         }
@@ -338,6 +356,8 @@ function elasticSearchQuery(params) {
                 facet["statistical"] = {"field" : defn["field"]}
             } else if (defn.type === "terms_stats") {
                 facet["terms_stats"] = {key_field : defn["field"], value_field: defn["value_field"], size : size, order : defn["order"]}
+            } else if (defn.type === "date_histogram") {
+                facet["date_histogram"] = {field : defn["field"], interval : defn["interval"]}
             }
             qs["facets"][defn["field"]] = facet
         }
@@ -458,6 +478,9 @@ function elasticSearchSuccess(callback) {
                 } else if (facet["_type"] === "terms_stats") {
                     var terms = facet["terms"];
                     resultobj["facets"][item] = terms
+                } else if (facet["_type"] === "date_histogram") {
+                    var entries = facet["entries"]
+                    resultobj["facets"][item] = entries
                 }
             }
         }
