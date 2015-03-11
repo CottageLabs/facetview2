@@ -351,6 +351,9 @@ function getUrlVars() {
             
             // enable the share/save link feature
             "sharesave_link" : true,
+
+            // provide a function which will do url shortening for the sharesave_link box
+            "url_shortener" : false,
             
             // on free-text search, default operator for the elasticsearch query system to use
             "default_operator" : "OR",
@@ -525,6 +528,9 @@ function getUrlVars() {
 
             // called when the selected filters have changed
             "behaviour_set_selected_filters" : setUISelectedFilters,
+
+            // called when the share url is shortened/lengthened
+            "behaviour_share_url" : setUIShareUrlChange,
             
             ///// lifecycle callbacks /////////////////////////////
             
@@ -551,7 +557,13 @@ function getUrlVars() {
             "rawdata" : false,
             
             // the parsed data from elasticsearch
-            "data" : false
+            "data" : false,
+
+            // the short url for the current search, if it has been generated
+            "current_short_url" : false,
+
+            // should the short url or the long url be displayed to the user?
+            "show_short_url" : false
         };
         
         function deriveOptions() {
@@ -697,10 +709,9 @@ function getUrlVars() {
                 var querypart = shareableUrl(options, true, true);
                 window.history.pushState("", "search", querypart);
             }
-            
-            // also do the share save url
-            var shareable = shareableUrl(options);
-            if (options.sharesave_link) { $('.facetview_sharesaveurl', obj).val(shareable); }
+
+            // also set the default shareable url at this point
+            setShareableUrl()
         }
         
         /******************************************************************
@@ -831,7 +842,54 @@ function getUrlVars() {
         function clickShareSave(event) {
             event.preventDefault();
             $('.facetview_sharesavebox', obj).toggle();
-        };
+        }
+
+        function clickShortenUrl(event) {
+            event.preventDefault();
+            if (!options.url_shortener) {
+                return;
+            }
+
+            if (options.current_short_url) {
+                options.show_short_url = true;
+                setShareableUrl();
+                return;
+            }
+
+            function shortenCallback(short_url) {
+                if (!short_url) {
+                    return;
+                }
+                options.current_short_url = short_url;
+                options.show_short_url = true;
+                setShareableUrl();
+            }
+
+            var source = elasticSearchQuery({
+                "options" : options,
+                "include_facets" : options.include_facets_in_url,
+                "include_fields" : options.include_fields_in_url
+            });
+            options.url_shortener(source, shortenCallback);
+        }
+
+        function clickLengthenUrl(event) {
+            event.preventDefault();
+            options.show_short_url = false;
+            setShareableUrl();
+        }
+
+        function setShareableUrl() {
+            if (options.sharesave_link) {
+                if (options.current_short_url && options.show_short_url) {
+                    $('.facetview_sharesaveurl', obj).val(options.current_short_url)
+                } else {
+                    var shareable = shareableUrl(options);
+                    $('.facetview_sharesaveurl', obj).val(shareable);
+                }
+                options.behaviour_share_url(options, obj);
+            }
+        }
         
         /**************************************************************
          * functions for handling facet events
@@ -1278,6 +1336,9 @@ function getUrlVars() {
                 return
             }
             options.searching = true; // we are executing a search right now
+
+            // invalidate the existing short url
+            options.current_short_url = false;
             
             // if a pre search callback is provided, run it
             if (typeof options.pre_search_callback === 'function') {
@@ -1364,6 +1425,8 @@ function getUrlVars() {
                 $('.facetview_sharesave', obj).bind('click', clickShareSave);
                 $('.facetview_freetext', obj).bindWithDelay('keyup', keyupSearchText, options.freetext_submit_delay);
                 $('.facetview_force_search', obj).bind('click', clickSearch);
+                $('.facetview_shorten_url', obj).bind('click', clickShortenUrl);
+                $('.facetview_lengthen_url', obj).bind('click', clickLengthenUrl);
                 
                 // bind the facet control triggers
                 $('.facetview_filtershow', obj).bind('click', clickFilterShow);

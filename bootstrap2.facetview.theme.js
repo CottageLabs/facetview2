@@ -148,11 +148,19 @@ function searchOptions(options) {
 
     // share and save link
     if (options.sharesave_link) {
-        thefacetview += '<a class="btn facetview_sharesave" title="share or save this search" style="margin:0 0 21px 5px;" href=""><i class="icon-share-alt"></i></a>';
+        thefacetview += '<a class="btn facetview_sharesave" title="share or save this search" style="margin:0 0 21px 5px;" href="">share <i class="icon icon-share"></i></a>';
         thefacetview += '<div class="facetview_sharesavebox alert alert-info" style="display:none;"> \
             <button type="button" class="facetview_sharesave close">×</button> \
-            <p>Share or save this search:</p> \
-            <textarea class="facetview_sharesaveurl" style="width:100%;height:100px;">' + shareableUrl(options) + '</textarea> \
+            <p>Share or save this search:'
+
+        // if there is a url_shortener available, render a link
+        if (options.url_shortener) {
+            thefacetview += " <a href='#' class='facetview_shorten_url'>(shorten url)</a>";
+            thefacetview += " <a href='#' class='facetview_lengthen_url' style='display: none'>(original url)</a>";
+        }
+
+        thefacetview += '</p> \
+            <textarea class="facetview_sharesaveurl" style="width:100%">' + shareableUrl(options) + '</textarea> \
             </div>';
     }
 
@@ -1225,4 +1233,14 @@ function setUISelectedFilters(options, context) {
         }
     }
     $('#facetview_selectedfilters', context).html(frag);
+}
+
+function setUIShareUrlChange(options, context) {
+    if (options.current_short_url && options.show_short_url) {
+        $(".facetview_shorten_url", context).hide();
+        $(".facetview_lengthen_url", context).show();
+    } else {
+        $(".facetview_shorten_url", context).show();
+        $(".facetview_lengthen_url", context).hide();
+    }
 }
