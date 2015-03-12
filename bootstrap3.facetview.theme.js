@@ -875,7 +875,11 @@ function renderResultRecord(options, record) {
 
                 // just get a string representation of the object
                 if (res) {
-                    thevalue = res.toString()
+                    if ($.isArray(res)) {
+                        thevalue = res.join(", ")
+                    } else {
+                        thevalue = res.toString()
+                    }
                 }
             }
 
