@@ -159,15 +159,23 @@ function searchOptions(options) {
     if (options.sharesave_link) {
         // style="margin:0 0 21px 5px;"
         thefacetview += '<div class="form-group"><div class="input-group"><span class="input-group-btn"><button class="btn btn-default facetview_sharesave" title="share or save this search" href="" style="margin-left: 10px"><span class="glyphicon glyphicon-share-alt"></span></button></span></div></div>';
+
+        thefacetview += "</div></form>";
+
+        thefacetview += '<div class="facetview_sharesavebox alert alert-info" style="display:none;"> \
+                <button type="button" class="facetview_sharesave close">×</button> \
+                <p>Share or save this search:';
+
+        // if there is a url_shortener available, render a link
+        if (options.url_shortener) {
+            thefacetview += " <a href='#' class='facetview_shorten_url'>(shorten url)</a>";
+            thefacetview += " <a href='#' class='facetview_lengthen_url' style='display: none'>(original url)</a>";
+        }
+
+        thefacetview += '</p> \
+                <textarea class="facetview_sharesaveurl" style="width:100%">' + shareableUrl(options) + '</textarea> \
+                </div>';
     }
-
-    thefacetview += "</div></form>";
-
-    thefacetview += '<div class="facetview_sharesavebox alert alert-info" style="display:none;"> \
-            <button type="button" class="facetview_sharesave close">×</button> \
-            <p>Share or save this search:</p> \
-            <textarea class="facetview_sharesaveurl" style="width:100%;height:100px;">' + shareableUrl(options) + '</textarea> \
-            </div>';
 
     return thefacetview
 }
@@ -195,6 +203,9 @@ function facetList(options) {
                 continue;
             }
 
+            // note that we do render disabled facets, so that they are available for enabling/disabling
+            // by callbacks
+
             var type = facet.type ? facet.type : "terms"
             if (type === "terms") {
                 thefilters += options.render_terms_facet(facet, options)
@@ -202,13 +213,15 @@ function facetList(options) {
                 thefilters += options.render_range_facet(facet, options)
             } else if (type === "geo_distance") {
                 thefilters += options.render_geo_facet(facet, options)
+            } else if (type == "date_histogram") {
+                thefilters += options.render_date_histogram_facet(facet, options)
             }
             // FIXME: statistical facet and terms_stats facet?
-        };
+        }
         return thefilters
-    };
+    }
     return ""
-};
+}
 
 function renderTermsFacet(facet, options) {
     /*****************************************
@@ -223,14 +236,20 @@ function renderTermsFacet(facet, options) {
      * id: facetview_or_<safe filtername> - id of anchor for changing AND/OR operator
      *
      * each anchor must also have href="<filtername>"
+     *
+     * should (not must) respect the following config
+     *
+     * facet.controls - whether the size/sort/bool controls should be shown
      */
 
     // full template for the facet - we'll then go on and do some find and replace
     var filterTmpl = '<table id="facetview_filter_{{FILTER_NAME}}" class="facetview_filters table table-bordered table-condensed table-striped" data-href="{{FILTER_EXACT}}"> \
         <tr><td><a class="facetview_filtershow" title="filter by {{FILTER_DISPLAY}}" \
         style="color:#333; font-weight:bold;" href="{{FILTER_EXACT}}"><i class="glyphicon glyphicon-plus"></i> {{FILTER_DISPLAY}} \
-        </a> \
-        <span class="facetview_filteroptions">\
+        </a>';
+
+    if (facet.controls) {
+        filterTmpl += '<span class="facetview_filteroptions">\
             <form class="form-inline">\
                 <div class="input-group">\
                     <span class="input-group-btn"><button class="btn btn-default btn-sm facetview_morefacetvals" id="facetview_facetvals_{{FILTER_NAME}}" title="filter list size" href="{{FILTER_EXACT}}">0</button></span>\
@@ -238,8 +257,10 @@ function renderTermsFacet(facet, options) {
                     <span class="input-group-btn"><button class="btn btn-default btn-sm facetview_or" id="facetview_or_{{FILTER_NAME}}" href="{{FILTER_EXACT}}">OR</button></span>\
                 </div>\
             </form>\
-        </span>\
-        </td></tr> \
+        </span>';
+    }
+
+    filterTmpl += '</td></tr> \
         </table>';
 
     // put the name of the field into FILTER_NAME and FILTER_EXACT
@@ -294,6 +315,36 @@ function renderGeoFacet(facet, options) {
      * each anchor must also have href="<filtername>"
      */
      // full template for the facet - we'll then go on and do some find and replace
+    var filterTmpl = '<table id="facetview_filter_{{FILTER_NAME}}" class="facetview_filters table table-bordered table-condensed table-striped" data-href="{{FILTER_EXACT}}"> \
+        <tr><td><a class="facetview_filtershow" title="filter by {{FILTER_DISPLAY}}" \
+        style="color:#333; font-weight:bold;" href="{{FILTER_EXACT}}"><i class="glyphicon glyphicon-plus"></i> {{FILTER_DISPLAY}} \
+        </a> \
+        </td></tr> \
+        </table>';
+
+    // put the name of the field into FILTER_NAME and FILTER_EXACT
+    filterTmpl = filterTmpl.replace(/{{FILTER_NAME}}/g, safeId(facet['field'])).replace(/{{FILTER_EXACT}}/g, facet['field']);
+
+    // set the display name of the facet in FILTER_DISPLAY
+    if ('display' in facet) {
+        filterTmpl = filterTmpl.replace(/{{FILTER_DISPLAY}}/g, facet['display']);
+    } else {
+        filterTmpl = filterTmpl.replace(/{{FILTER_DISPLAY}}/g, facet['field']);
+    };
+
+    return filterTmpl
+}
+
+function renderDateHistogramFacet(facet, options) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * id: facetview_filter_<safe filtername> - table for the specific filter
+     *
+     * each anchor must also have href="<filtername>"
+     */
+
+    // full template for the facet - we'll then go on and do some find and replace
     var filterTmpl = '<table id="facetview_filter_{{FILTER_NAME}}" class="facetview_filters table table-bordered table-condensed table-striped" data-href="{{FILTER_EXACT}}"> \
         <tr><td><a class="facetview_filtershow" title="filter by {{FILTER_DISPLAY}}" \
         style="color:#333; font-weight:bold;" href="{{FILTER_EXACT}}"><i class="glyphicon glyphicon-plus"></i> {{FILTER_DISPLAY}} \
@@ -509,9 +560,62 @@ function renderGeoFacetValues(options, facet) {
         var data_to = range.to ? " data-to='" + range.to + "' " : "";
         var data_from = range.from ? " data-from='" + range.from + "' " : "";
 
+        var sf = '<tr class="facetview_filtervalue" style="display:none;"><td>'
+        sf += "<strong>" + range.display + "</strong> "
+        sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" ' + data_to + data_from + ' href="#"><i class="icon-black icon-remove" style="margin-top:1px;"></i></a>'
+        sf += "</td></tr>"
+        frag += sf
+
+        // if a range is already selected, we don't render any more
+        return frag
+    }
+
+    // then render the remaining selectable facets if necessary
+    for (var i=0; i < facet["distance"].length; i=i+1) {
+        var r = facet["distance"][i]
+        var f = getValueForRange(r, facet["values"])
+        if (f) {
+            if (f.count === 0 && facet.hide_empty_distance) {
+                continue
+            }
+            var append = options.render_geo_facet_result(options, facet, f, r)
+            frag += append
+        }
+    }
+
+    return frag
+}
+
+function renderDateHistogramValues(options, facet) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * class: facetview_filtervalue - wrapper element for any value included in the list
+     * class: facetview_filterselected - for any anchors around selected filters
+     * class: facetview_clear - for any link which should remove a filter (must also provide data-field and data-value)
+     * class: facetview_filterchoice - tags the anchor wrapped around the name of the (unselected) field
+     *
+     * should (not must) respect the following config
+     *
+     * options.selected_filters_in_facet - whether to show selected filters in the facet pull-down (if that's your idiom)
+     * options.render_facet_result - function which renders the individual facets
+     */
+
+    var selected_range = options.active_filters[facet.field];
+    var frag = "";
+
+    // render the active filter if there is one
+    if (options.selected_filters_in_facet && selected_range) {
+        var from = selected_range.from;
+        var data_from = " data-from='" + from + "' ";
+        var display = from;
+        if (facet.value_function) {
+            display = facet.value_function(display);
+        }
+
         var sf = '<tr class="facetview_filtervalue" style="display:none;"><td>';
-        sf += "<strong>" + range.display + "</strong> ";
-        sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" ' + data_to + data_from + ' href="#"><i class="glyphicon glyphicon-black glyphicon-remove" style="margin-top:1px;"></i></a>';
+        sf += "<strong>" + display + "</strong> ";
+        sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" '+ data_from + ' href="#"><i class="icon-black icon-remove" style="margin-top:1px;"></i></a>';
         sf += "</td></tr>";
         frag += sf;
 
@@ -520,14 +624,31 @@ function renderGeoFacetValues(options, facet) {
     }
 
     // then render the remaining selectable facets if necessary
-    for (var i=0; i < facet["distance"].length; i=i+1) {
-        var r = facet["distance"][i];
-        var f = getValueForRange(r, facet["values"]);
+
+    // get the facet values in the right order for display
+    var values = facet["values"];
+    if (facet.sort === "desc") {
+        values.reverse()
+    }
+
+    for (var i = 0; i < values.length; i++) {
+        var f = values[i];
         if (f) {
-            if (f.count === 0 && facet.hide_empty_distance) {
+            if (f.count === 0 && facet.hide_empty_date_bin) {
                 continue
             }
-            var append = options.render_geo_facet_result(options, facet, f, r);
+            var next = false;
+            if (facet.sort === "asc") {
+                if (i + 1 < values.length) {
+                    next = values[i + 1]
+                }
+            } else if (facet.sort === "desc") {
+                if (i - 1 >= 0) {
+                    next = values[i - 1];
+                }
+            }
+
+            var append = options.render_date_histogram_result(options, facet, f, next);
             frag += append
         }
     }
@@ -586,6 +707,28 @@ function renderGeoFacetResult(options, facet, result, range) {
 
     var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
                 '" data-field="' + facet['field'] + '" ' + data_to + data_from + ' href="#"><span class="facetview_filterchoice_text">' + range.display + '</span>' +
+                '<span class="facetview_filterchoice_count"> (' + result.count + ')</span></a></td></tr>';
+    return append
+}
+
+function renderDateHistogramResult(options, facet, result, next) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * class: facetview_filtervalue - tags the top level element as being a facet result
+     * class: facetview_filterchoice - tags the anchor wrapped around the name of the field
+     */
+
+    var data_from = result.time ? " data-from='" + result.time + "' " : "";
+    var data_to = next ? " data-to='" + next.time + "' " : "";
+
+    var display = result.time;
+    if (facet.value_function) {
+        display = facet.value_function(display)
+    }
+
+    var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
+                '" data-field="' + facet['field'] + '" ' + data_to + data_from + ' href="#"><span class="facetview_filterchoice_text">' + display + '</span>' +
                 '<span class="facetview_filterchoice_count"> (' + result.count + ')</span></a></td></tr>';
     return append
 }
@@ -709,10 +852,10 @@ function renderResultRecord(options, record) {
     // build up a full string representing the object
     var lines = '';
     for (var lineitem = 0; lineitem < display.length; lineitem++) {
-        line = "";
+        var line = "";
         for (var object = 0; object < display[lineitem].length; object++) {
             var thekey = display[lineitem][object]['field'];
-            var thevalue = ""
+            var thevalue = "";
             if (typeof options.results_render_callbacks[thekey] == 'function') {
                 // a callback is defined for this field so just call it
                 thevalue = options.results_render_callbacks[thekey].call(this, record);
@@ -720,15 +863,23 @@ function renderResultRecord(options, record) {
                 // split the key up into its parts, and work our way through the
                 // tree until we get to the node to display.  Note that this will only
                 // work with a string hierarchy of dicts - it can't have lists in it
-                parts = thekey.split('.');
-                var res = record
+                var parts = thekey.split('.');
+                var res = record;
                 for (var i = 0; i < parts.length; i++) {
-                    res = res[parts[i]]
+                    if (res) {
+                        res = res[parts[i]]
+                    } else {
+                        continue
+                    }
                 }
 
                 // just get a string representation of the object
                 if (res) {
-                    thevalue = res.toString()
+                    if ($.isArray(res)) {
+                        thevalue = res.join(", ")
+                    } else {
+                        thevalue = res.toString()
+                    }
                 }
             }
 
@@ -894,6 +1045,45 @@ function renderActiveGeoFilter(options, facet, field, value) {
         }
     }
 
+    var clean = safeId(field)
+    var display = facet.display ? facet.display : facet.field
+
+    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group'>"
+
+    if (options.show_filter_field) {
+        frag += '<button class="btn btn-info facetview_inactive_link facetview_filterselected" href="' + field + '">'
+        frag += '<span class="facetview_filterselected_text"><strong>' + display + '</strong></span>'
+        frag += "</button>"
+    }
+
+    var range = getRangeForValue(value, facet)
+
+    var data_to = value.to ? " data-to='" + value.to + "' " : ""
+    var data_from = value.from ? " data-from='" + value.from + "' " : ""
+
+    frag += '<button class="facetview_filterselected facetview_clear btn btn-info" data-field="' + field + '" ' + data_to + data_from +
+            ' alt="remove" title="remove" href="#">'
+    frag += '<span class="facetview_filterselected_text">' + range.display + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
+    frag += "</button>"
+
+    frag += "</div>"
+
+    return frag
+}
+
+function renderActiveDateHistogramFilter(options, facet, field, value) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * class: facetview_filterselected - anchor tag for any clickable filter selection
+     * class: facetview_clear - anchor tag for any link which will remove the filter (should also provide data-value and data-field)
+     * class: facetview_inactive_link - any link combined with facetview_filterselected which should not execute when clicked
+     *
+     * should (not must) respect the config
+     *
+     * options.show_filter_field - whether to include the name of the field the filter is active on
+     */
+
     var clean = safeId(field);
     var display = facet.display ? facet.display : facet.field;
 
@@ -905,17 +1095,19 @@ function renderActiveGeoFilter(options, facet, field, value) {
         frag += "</button>"
     }
 
-    var range = getRangeForValue(value, facet);
-
-    var data_to = value.to ? " data-to='" + value.to + "' " : "";
     var data_from = value.from ? " data-from='" + value.from + "' " : "";
 
-    frag += '<button class="facetview_filterselected facetview_clear btn btn-primary" data-field="' + field + '" ' + data_to + data_from +
-            ' alt="remove" title="remove" href="#">';
-    frag += '<span class="facetview_filterselected_text">' + range.display + '</span> <i class="glyphicon glyphicon-white glyphicon-remove"></i>';
-    frag += "</button>";
+    var valdisp = value.from;
+    if (facet.value_function) {
+        valdisp = facet.value_function(valdisp);
+    }
 
-    frag += "</div>";
+    frag += '<button class="facetview_filterselected facetview_clear btn btn-info" data-field="' + field + '" ' + data_from +
+            ' alt="remove" title="remove" href="#">'
+    frag += '<span class="facetview_filterselected_text">' + valdisp + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
+    frag += "</button>"
+
+    frag += "</div>"
 
     return frag
 }
@@ -1055,9 +1247,21 @@ function setUISelectedFilters(options, context) {
                 frag += options.render_active_range_filter(options, facet, field, filter_list)
             } else if (facet.type === "geo_distance") {
                 frag += options.render_active_geo_filter(options, facet, field, filter_list)
+            } else if (facet.type === "date_histogram") {
+                frag += options.render_active_date_histogram_filter(options, facet, field, filter_list)
             }
             // FIXME: statistical facet?
         }
     }
     $('#facetview_selectedfilters', context).html(frag);
+}
+
+function setUIShareUrlChange(options, context) {
+    if (options.current_short_url && options.show_short_url) {
+        $(".facetview_shorten_url", context).hide();
+        $(".facetview_lengthen_url", context).show();
+    } else {
+        $(".facetview_shorten_url", context).show();
+        $(".facetview_lengthen_url", context).hide();
+    }
 }

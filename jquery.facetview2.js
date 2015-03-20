@@ -270,9 +270,10 @@ function getUrlVars() {
             {
                 "field" : "<elasticsearch field>"                                   // field upon which to facet
                 "display" : "<display name>",                                       // display name for the UI
-                "type": "term|range|geo_distance|statistical",                      // the kind of facet this will be
+                "type": "term|range|geo_distance|statistical|date_histogram",       // the kind of facet this will be
                 "open" : true|false,                                                // whether the facet should be open or closed (initially)
                 "hidden" : true|false                                               // whether the facet should be displayed at all (e.g. you may just want the data for a callback)
+                "disabled" : true|false                                             // whether the facet should be acted upon in any way.  This might be useful if you want to enable/disable facets under different circumstances via a callback
                 
                 // terms facet only
                 
@@ -282,6 +283,7 @@ function getUrlVars() {
                 "deactivate_threshold" : <num>,                                     // number of facet terms below which the facet is disabled
                 "hide_inactive" : true|false,                                       // whether to hide or just disable the facet if below deactivate threshold
                 "value_function" : <function>,                                      // function to be called on each value before display
+                "controls" : true|false                                             // should the facet sort/size/bool controls be shown?
                 
                 // range facet only
                 
@@ -299,7 +301,12 @@ function getUrlVars() {
                 "unit" : "<unit of distance, e.g. km or mi>"                        // unit to calculate distances in (e.g. km or mi)
                 "lat" : <latitude>                                                  // latitude from which to measure distances
                 "lon" : <longitude>                                                 // longitude from which to measure distances
-                
+
+                // date histogram facet only
+                "interval" : "year, quarter, month, week, day, hour, minute ,second"  // period to use for date histogram
+                "sort" : "asc|desc",                                                // which ordering to use for date histogram
+                "hide_empty_date_bin" : true|false                                  // whether to suppress display of date range with no values
+
                 // admin use only
                 
                 "values" : <object>                                                 // the values associated with a successful query on this facet
@@ -321,12 +328,17 @@ function getUrlVars() {
             "default_facet_order" : "count",
             "default_facet_hide_inactive" : false,
             "default_facet_deactivate_threshold" : 0, // equal to or less than this number will deactivate the facet
+            "default_facet_controls" : true,
             "default_hide_empty_range" : true,
             "default_hide_empty_distance" : true,
             "default_distance_unit" : "km",
             "default_distance_lat" : 51.4768,       // Greenwich meridian (give or take a few decimal places)
             "default_distance_lon" : 0.0,           //
-            
+            "default_date_histogram_interval" : "year",
+            "default_hide_empty_date_bin" : true,
+            "default_date_histogram_sort" : "asc",
+
+
             ///// search bar configuration /////////////////////////////
             
             // list of options by which the search results can be sorted
@@ -339,6 +351,9 @@ function getUrlVars() {
             
             // enable the share/save link feature
             "sharesave_link" : true,
+
+            // provide a function which will do url shortening for the sharesave_link box
+            "url_shortener" : false,
             
             // on free-text search, default operator for the elasticsearch query system to use
             "default_operator" : "OR",
@@ -432,6 +447,11 @@ function getUrlVars() {
             "render_geo_facet" : renderGeoFacet,                // overall framework for a geo distance facet
             "render_geo_facet_values" : renderGeoFacetValues,   // the list of geo distance facet values
             "render_geo_facet_result" : renderGeoFacetResult,   // individual geo distance facet values
+
+            // render the date histogram facet
+            "render_date_histogram_facet" : renderDateHistogramFacet,
+            "render_date_histogram_values" : renderDateHistogramValues,
+            "render_date_histogram_result" : renderDateHistogramResult,
             
             // render any searching notification (which will then be shown/hidden as needed)
             "render_searching_notification" : searchingNotification,
@@ -453,6 +473,9 @@ function getUrlVars() {
             
             // render a geo distance filter interface component (e.g. the filter name and the human readable description of the selected range)
             "render_active_geo_filter" : renderActiveGeoFilter,
+
+            // render a date histogram/range interface component (e.g. the filter name and the human readable description of the selected range)
+            "render_active_date_histogram_filter" : renderActiveDateHistogramFilter,
             
             ///// configs for standard render functions /////////////////////////////
             
@@ -505,6 +528,9 @@ function getUrlVars() {
 
             // called when the selected filters have changed
             "behaviour_set_selected_filters" : setUISelectedFilters,
+
+            // called when the share url is shortened/lengthened
+            "behaviour_share_url" : setUIShareUrlChange,
             
             ///// lifecycle callbacks /////////////////////////////
             
@@ -531,7 +557,13 @@ function getUrlVars() {
             "rawdata" : false,
             
             // the parsed data from elasticsearch
-            "data" : false
+            "data" : false,
+
+            // the short url for the current search, if it has been generated
+            "current_short_url" : false,
+
+            // should the short url or the long url be displayed to the user?
+            "show_short_url" : false
         };
         
         function deriveOptions() {
@@ -605,18 +637,23 @@ function getUrlVars() {
                 var facet = provided_options.facets[i];
                 if (!("type" in facet)) { facet["type"] = provided_options.default_facet_type }
                 if (!("open" in facet)) { facet["open"] = provided_options.default_facet_open }
-                if (!("hidden" in facet)) { facet["hiddel"] = provided_options.default_facet_hidden }
+                if (!("hidden" in facet)) { facet["hidden"] = provided_options.default_facet_hidden }
                 if (!("size" in facet)) { facet["size"] = provided_options.default_facet_size }
                 if (!("logic" in facet)) { facet["logic"] = provided_options.default_facet_operator }
                 if (!("order" in facet)) { facet["order"] = provided_options.default_facet_order }
                 if (!("hide_inactive" in facet)) { facet["hide_inactive"] = provided_options.default_facet_hide_inactive }
                 if (!("deactivate_threshold" in facet)) { facet["deactivate_threshold"] = provided_options.default_facet_deactivate_threshold }
+                if (!("controls" in facet)) { facet["controls"] = provided_options.default_facet_controls }
                 if (!("hide_empty_range" in facet)) { facet["hide_empty_range"] = provided_options.default_hide_empty_range }
                 if (!("hide_empty_distance" in facet)) { facet["hide_empty_distance"] = provided_options.default_hide_empty_distance }
                 if (!("unit" in facet)) { facet["unit"] = provided_options.default_distance_unit }
                 if (!("lat" in facet)) { facet["lat"] = provided_options.default_distance_lat }
                 if (!("lon" in facet)) { facet["lon"] = provided_options.default_distance_lon }
                 if (!("value_function" in facet)) { facet["value_function"] = function(value) { return value } }
+                if (!("interval" in facet)) { facet["interval"] = provided_options.default_date_histogram_interval }
+                if (!("hide_empty_date_bin" in facet)) { facet["hide_empty_date_bin"] = provided_options.default_hide_empty_date_bin }
+                if (!("sort" in facet)) { facet["sort"] = provided_options.default_date_histogram_sort }
+                if (!("disabled" in facet)) { facet["disabled"] = false }   // no default setter for this - if you don't specify disabled, they are not disabled
             }
             
             return provided_options
@@ -632,7 +669,7 @@ function getUrlVars() {
             
             // set the search order
             // NOTE: that this interface only supports single field ordering
-            sorting = options.sort
+            sorting = options.sort;
 
             for (var i=0; i < sorting.length; i=i+1) {
                 var so = sorting[i];
@@ -672,10 +709,9 @@ function getUrlVars() {
                 var querypart = shareableUrl(options, true, true);
                 window.history.pushState("", "search", querypart);
             }
-            
-            // also do the share save url
-            var shareable = shareableUrl(options);
-            if (options.sharesave_link) { $('.facetview_sharesaveurl', obj).val(shareable); }
+
+            // also set the default shareable url at this point
+            setShareableUrl()
         }
         
         /******************************************************************
@@ -806,7 +842,54 @@ function getUrlVars() {
         function clickShareSave(event) {
             event.preventDefault();
             $('.facetview_sharesavebox', obj).toggle();
-        };
+        }
+
+        function clickShortenUrl(event) {
+            event.preventDefault();
+            if (!options.url_shortener) {
+                return;
+            }
+
+            if (options.current_short_url) {
+                options.show_short_url = true;
+                setShareableUrl();
+                return;
+            }
+
+            function shortenCallback(short_url) {
+                if (!short_url) {
+                    return;
+                }
+                options.current_short_url = short_url;
+                options.show_short_url = true;
+                setShareableUrl();
+            }
+
+            var source = elasticSearchQuery({
+                "options" : options,
+                "include_facets" : options.include_facets_in_url,
+                "include_fields" : options.include_fields_in_url
+            });
+            options.url_shortener(source, shortenCallback);
+        }
+
+        function clickLengthenUrl(event) {
+            event.preventDefault();
+            options.show_short_url = false;
+            setShareableUrl();
+        }
+
+        function setShareableUrl() {
+            if (options.sharesave_link) {
+                if (options.current_short_url && options.show_short_url) {
+                    $('.facetview_sharesaveurl', obj).val(options.current_short_url)
+                } else {
+                    var shareable = shareableUrl(options);
+                    $('.facetview_sharesaveurl', obj).val(shareable);
+                }
+                options.behaviour_share_url(options, obj);
+            }
+        }
         
         /**************************************************************
          * functions for handling facet events
@@ -896,6 +979,8 @@ function getUrlVars() {
                 frag = options.render_range_facet_values(options, facet)
             } else if (facet.type === "geo_distance") {
                 frag = options.render_geo_facet_values(options, facet)
+            } else if (facet.type === "date_histogram") {
+                frag = options.render_date_histogram_values(options, facet)
             }
             // FIXME: how to display statistical facet?
             if (frag) {
@@ -934,6 +1019,11 @@ function getUrlVars() {
                 var to = $(this).attr("data-to");
                 if (from) { value["from"] = from }
                 if (to) { value["to"] = to }
+            } else if (facet.type === "date_histogram") {
+                var from = $(this).attr("data-from");
+                var to = $(this).attr("data-to");
+                if (from) { value["from"] = from }
+                if (to) { value["to"] = to }
             }
             // FIXME: how to handle clicks on statistical facet (if that even makes sense) or terms_stats facet
             
@@ -968,7 +1058,11 @@ function getUrlVars() {
             } else if (facet.type === "geo_distance") {
                 // NOTE: we are implicitly stating that geo distance range filters cannot be OR'd
                 options.active_filters[field] = value
+            } else if (facet.type === "date_histogram") {
+                // NOTE: we are implicitly stating that date histogram filters cannot be OR'd
+                options.active_filters[field] = value
             }
+
             // FIXME: statistical facet support here?
         }
         
@@ -984,6 +1078,8 @@ function getUrlVars() {
                 } else if (facet.type === "range") {
                     delete options.active_filters[field]
                 } else if (facet.type === "geo_distance") {
+                    delete options.active_filters[field]
+                } else if (facet.type === "date_histogram") {
                     delete options.active_filters[field]
                 }
                 // FIXME: statistical facet support?
@@ -1011,6 +1107,8 @@ function getUrlVars() {
                 var to = $(this).attr("data-to");
                 if (from) { value["from"] = from }
                 if (to) { value["to"] = to }
+            } else if (facet.type == "date_histogram") {
+                value = $(this).attr("data-from");
             }
             // FIXMe: statistical facet
             
@@ -1033,34 +1131,47 @@ function getUrlVars() {
             $('.facetview_filters', obj).each(function() {
                 var facet = selectFacet(options, $(this).attr('data-href'));
                 var values = "values" in facet ? facet["values"] : [];
-                var visible = true;
-                if (facet.type === "terms") {
-                    // terms facet becomes deactivated if the number of results is less than the deactivate threshold defined
-                    visible = facet.deactivate_threshold <= values.length
-                } else if (facet.type === "range") {
-                    // range facet becomes deactivated if there is a count of 0 in every value
-                    var view = false;
-                    for (var i=0; i < facet.values.length; i=i+1) {
-                        var val = facet.values[i];
-                        if (val.count > 0) {
-                            view = true;
-                            break
+                var visible = !facet.disabled;
+                if (!facet.disabled) {
+                    if (facet.type === "terms") {
+                        // terms facet becomes deactivated if the number of results is less than the deactivate threshold defined
+                        visible = values.length > facet.deactivate_threshold;
+                    } else if (facet.type === "range") {
+                        // range facet becomes deactivated if there is a count of 0 in every value
+                        var view = false;
+                        for (var i = 0; i < values.length; i = i + 1) {
+                            var val = values[i];
+                            if (val.count > 0) {
+                                view = true;
+                                break
+                            }
                         }
-                    }
-                    visible = view
-                } else if (facet.type === "geo_distance") {
-                    // distance facet becomes deactivated if there is a count of 0 in every value
-                    var view = false;
-                    for (var i=0; i < facet.values.length; i=i+1) {
-                        var val = facet.values[i];
-                        if (val.count > 0) {
-                            view = true;
-                            break
+                        visible = view
+                    } else if (facet.type === "geo_distance") {
+                        // distance facet becomes deactivated if there is a count of 0 in every value
+                        var view = false;
+                        for (var i = 0; i < values.length; i = i + 1) {
+                            var val = values[i];
+                            if (val.count > 0) {
+                                view = true;
+                                break
+                            }
                         }
+                        visible = view
+                    } else if (facet.type === "date_histogram") {
+                        // date histogram facet becomes deactivated if there is a count of 0 in every value
+                        var view = false;
+                        for (var i = 0; i < values.length; i = i + 1) {
+                            var val = values[i];
+                            if (val.count > 0) {
+                                view = true;
+                                break
+                            }
+                        }
+                        visible = view
                     }
-                    visible = view
+                    // FIXME: statistical facet?
                 }
-                // FIXME: statistical facet?
 
                 options.behaviour_facet_visibility(options, obj, facet, visible)
             });
@@ -1153,18 +1264,26 @@ function getUrlVars() {
             for (var each = 0; each < options.facets.length; each++) {
                 // get the facet, the field name and the size
                 var facet = options.facets[each];
+
+                // no need to populate any disabled facets
+                if (facet.disabled) { continue }
+
                 var field = facet['field'];
-                var size = facet["size"] ? facet["size"] : options.default_facet_size
+                var size = facet.hasOwnProperty("size") ? facet["size"] : options.default_facet_size;
                 
                 // get the records to be displayed, limited by the size and record against
                 // the options object
                 var records = results["facets"][field];
-                // special rule for handling statistical facets
-                if (records.hasOwnProperty("_type") && records["_type"] == "statistical") {
+                // special rule for handling statistical, range and histogram facets
+                if (records.hasOwnProperty("_type") && records["_type"] === "statistical") {
                     facet["values"] = records
                 } else {
                     if (!records) { records = [] }
-                    facet["values"] = records.slice(0, size)
+                    if (size) { // this means you can set the size of a facet to something false (like, false, or 0, and size will be ignored)
+                        facet["values"] = records.slice(0, size)
+                    } else {
+                        facet["values"] = records
+                    }
                 }
 
                 // set the results on the page
@@ -1196,6 +1315,18 @@ function getUrlVars() {
             options.behaviour_finished_searching(options, obj);
             options.searching = false;
         }
+
+        function pruneActiveFilters() {
+            for (var i = 0; i < options.facets.length; i++) {
+                var facet = options.facets[i];
+                if (facet.disabled) {
+                    if (facet.field in options.active_filters) {
+                        delete options.active_filters[facet.field];
+                    }
+                }
+            }
+            publishSelectedFilters();
+        }
         
         function doSearch() {
             // FIXME: does this have any weird side effects?
@@ -1205,6 +1336,9 @@ function getUrlVars() {
                 return
             }
             options.searching = true; // we are executing a search right now
+
+            // invalidate the existing short url
+            options.current_short_url = false;
             
             // if a pre search callback is provided, run it
             if (typeof options.pre_search_callback === 'function') {
@@ -1213,7 +1347,11 @@ function getUrlVars() {
             
             // trigger any searching notification behaviour
             options.behaviour_show_searching(options, obj);
-            
+
+            // remove from the active filters any whose facets are disabled
+            // (this may have happened during the pre-search callback, for example)
+            pruneActiveFilters();
+
             // make the search query
             var queryobj = elasticSearchQuery({"options" : options});
             options.queryobj = queryobj
@@ -1223,7 +1361,7 @@ function getUrlVars() {
             }
             
             // augment the URL bar if possible, and the share/save link
-            urlFromOptions()
+            urlFromOptions();
             
             // issue the query to elasticsearch
             doElasticSearchQuery({
@@ -1244,10 +1382,10 @@ function getUrlVars() {
         var options = $.fn.facetview.options;
         
         // render the facetview frame which will then be populated
-        thefacetview = options.render_the_facetview(options);
-        thesearchopts = options.render_search_options(options);
-        thefacets = options.render_facet_list(options);
-        searching = options.render_searching_notification(options);
+        var thefacetview = options.render_the_facetview(options);
+        var thesearchopts = options.render_search_options(options);
+        var thefacets = options.render_facet_list(options);
+        var searching = options.render_searching_notification(options);
         
         // now create the plugin on the page for each div
         var obj = undefined;
@@ -1263,9 +1401,11 @@ function getUrlVars() {
                 // add the search controls
                 $(".facetview_search_options_container", obj).html(thesearchopts);
                 
-                // add the facets (empty at this stage)
+                // add the facets (empty at this stage), then set their visibility, which will fall back to the
+                // worst case scenario for visibility - it means facets won't disappear after the search, only reappear
                 if (thefacets != "") {
                     $('#facetview_filters', obj).html(thefacets);
+                    facetVisibility();
                 }
                 
                 // add the loading notification
@@ -1274,7 +1414,7 @@ function getUrlVars() {
                 }
                 
                 // populate all the page UI framework from the options
-                uiFromOptions(options)
+                uiFromOptions(options);
                 
                 // bind the search control triggers
                 $(".facetview_startagain", obj).bind("click", clickStartAgain);
@@ -1285,6 +1425,8 @@ function getUrlVars() {
                 $('.facetview_sharesave', obj).bind('click', clickShareSave);
                 $('.facetview_freetext', obj).bindWithDelay('keyup', keyupSearchText, options.freetext_submit_delay);
                 $('.facetview_force_search', obj).bind('click', clickSearch);
+                $('.facetview_shorten_url', obj).bind('click', clickShortenUrl);
+                $('.facetview_lengthen_url', obj).bind('click', clickLengthenUrl);
                 
                 // bind the facet control triggers
                 $('.facetview_filtershow', obj).bind('click', clickFilterShow);
