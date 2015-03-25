@@ -1,3 +1,15 @@
+function escapeHtml(unsafe) {
+    if (typeof unsafe.replace !== "function") {
+        return unsafe
+    }
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 /******************************************************************
  * DEFAULT RENDER FUNCTIONS
  *****************************************************************/
@@ -393,7 +405,7 @@ function renderTermsFacetValues(options, facet) {
                 }
                 var sf = '<tr class="facetview_filtervalue" style="display:none;"><td>';
                 sf += "<strong>" + value + "</strong> ";
-                sf += '<button class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" data-value="' + value + '" href="' + value + '" style="border: 0px; background: #ffffff"><i class="glyphicon glyphicon-black glyphicon-remove"></i></button>'
+                sf += '<button class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" data-value="' + escapeHtml(value) + '" href="' + escapeHtml(value) + '" style="border: 0px; background: #ffffff"><i class="glyphicon glyphicon-black glyphicon-remove"></i></button>'
                 sf += "</td></tr>";
                 frag += sf
             }
@@ -673,7 +685,7 @@ function renderTermsFacetResult(options, facet, result, selected_filters) {
         display = facet.value_function(display)
     }
     var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
-                '" data-field="' + facet['field'] + '" data-value="' + result.term + '" href="' + result.term +
+                '" data-field="' + facet['field'] + '" data-value="' + escapeHtml(result.term) + '" href="' + escapeHtml(result.term) +
                 '"><span class="facetview_filterchoice_text">' + display + '</span>' +
                 '<span class="facetview_filterchoice_count"> (' + result.count + ')</span></a></td></tr>';
     return append
@@ -728,7 +740,7 @@ function renderDateHistogramResult(options, facet, result, next) {
     }
 
     var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
-                '" data-field="' + facet['field'] + '" ' + data_to + data_from + ' href="#"><span class="facetview_filterchoice_text">' + display + '</span>' +
+                '" data-field="' + facet['field'] + '" ' + data_to + data_from + ' href="#"><span class="facetview_filterchoice_text">' + escapeHtml(display) + '</span>' +
                 '<span class="facetview_filterchoice_count"> (' + result.count + ')</span></a></td></tr>';
     return append
 }
@@ -881,6 +893,8 @@ function renderResultRecord(options, record) {
                         thevalue = res.toString()
                     }
                 }
+
+                thevalue = escapeHtml(thevalue);
             }
 
             // if we have a value to display, sort out the pre-and post- stuff and build the new line
@@ -946,8 +960,8 @@ function renderActiveTermsFilter(options, facet, field, filter_list) {
             value = facet.value_function(value)
         }
 
-        frag += '<button class="facetview_filterselected facetview_clear btn btn-primary" data-field="' + field + '" data-value="' + value + '" alt="remove" title="remove" href="' + value + '">';
-        frag += '<span class="facetview_filterselected_text">' + value + '</span> <i class="glyphicon glyphicon-white glyphicon-remove"></i>';
+        frag += '<button class="facetview_filterselected facetview_clear btn btn-primary" data-field="' + field + '" data-value="' + escapeHtml(value) + '" alt="remove" title="remove" href="' + escapeHtml(value) + '">';
+        frag += '<span class="facetview_filterselected_text">' + escapeHtml(value) + '</span> <i class="glyphicon glyphicon-white glyphicon-remove"></i>';
         frag += "</button>";
 
         if (i !== filter_list.length - 1 && options.show_filter_logic) {
@@ -1104,7 +1118,7 @@ function renderActiveDateHistogramFilter(options, facet, field, value) {
 
     frag += '<button class="facetview_filterselected facetview_clear btn btn-info" data-field="' + field + '" ' + data_from +
             ' alt="remove" title="remove" href="#">'
-    frag += '<span class="facetview_filterselected_text">' + valdisp + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
+    frag += '<span class="facetview_filterselected_text">' + escapeHtml(valdisp) + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
     frag += "</button>"
 
     frag += "</div>"
