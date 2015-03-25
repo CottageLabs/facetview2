@@ -87,8 +87,15 @@ function searchOptions(options) {
      * options.search_button - whether to provide a button to force a search
      */
 
+    var thefacetview = "";
+
+    // share and save link
+    if (options.sharesave_link) {
+        thefacetview += '<a class="btn facetview_sharesave" title="share or save this search" style="margin:0 5px 21px 0px;" href="">share <i class="icon icon-share"></i></a>';
+    }
+
     // initial button group of search controls
-    var thefacetview = '<div class="btn-group" style="display:inline-block; margin-right:5px;"> \
+    thefacetview += '<div class="btn-group" style="display:inline-block; margin-right:5px;"> \
         <a class="btn btn-small facetview_startagain" title="clear all search settings and start again" href=""><i class="icon-remove"></i></a> \
         <a class="btn btn-small facetview_pagesize" title="change result set size" href="#"></a>';
 
@@ -146,9 +153,8 @@ function searchOptions(options) {
             -moz-border-radius:0px 5px 5px 0px; -webkit-border-radius:0px 5px 5px 0px;'><i class='icon-white icon-search'></i></a>"
     }
 
-    // share and save link
+    // share and save link box
     if (options.sharesave_link) {
-        thefacetview += '<a class="btn facetview_sharesave" title="share or save this search" style="margin:0 0 21px 5px;" href="">share <i class="icon icon-share"></i></a>';
         thefacetview += '<div class="facetview_sharesavebox alert alert-info" style="display:none;"> \
             <button type="button" class="facetview_sharesave close">×</button> \
             <p>Share or save this search:'
