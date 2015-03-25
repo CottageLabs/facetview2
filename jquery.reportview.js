@@ -259,6 +259,7 @@ function hc_convertMultiBar(params){
         }
         hc_data_series.push(ns)
     }
+    // push the categories on to the end of the data
     hc_data_series.push(x_labels);
     return hc_data_series
 }
@@ -272,10 +273,14 @@ function hc_renderMultiBar(params){
     // get chart titles, if any
     var titles = get_chart_titles(params);
 
+    // pop the categories (bar labels) off the end of the data
+    var categories = data_series.pop().categories;
+
     // Switch to horizontal type if required
     var chart_type = 'column';
     if (options.type == 'horizontal_multibar'){
-        chart_type = 'bar'
+        chart_type = 'bar';
+        data_series.reverse(); //FIXME: is there a better way of getting the bars in the right order? This reverses labels.
     }
 
     var chart = new Highcharts.Chart({
@@ -300,7 +305,7 @@ function hc_renderMultiBar(params){
             text: titles.subtitle_text
         },
         xAxis: {
-            categories: data_series.pop().categories,
+            categories: categories,
             title: {
                 text: titles.x_axis_label
             }

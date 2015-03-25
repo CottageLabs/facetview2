@@ -155,6 +155,47 @@ jQuery(document).ready(function($) {
         });
     });
 
+    $('#report-view-horiz-bar-facet_hc').each(function() {
+        $(this).report({
+            debug: true,
+            type: "horizontal_multibar",
+            draw_3d: false,
+            main_title : "Type count in index",
+            sub_title : "of English language documents",
+            x_axis_label : false,
+            y_axis_label : false,
+            search_url: "http://localhost:9200/doaj/_search",
+            facets: [
+                {
+                    "field" : "_type",
+                    "size" : 100,
+                    "display" : "count"
+                }
+            ],
+            fixed_filters: [
+                {"term" : {"index.language.exact" : "English"}}
+            ]
+        });
+    });
+
+    $('#report-view-horiz-bar-facet_d3').each(function() {
+        $(this).report({
+            type: "horizontal_multibar",
+            provider: "d3",
+            search_url: "http://localhost:9200/doaj/_search",
+            facets: [
+                {
+                    "field" : "_type",
+                    "size" : 100,
+                    "display" : "count"
+                }
+            ],
+            fixed_filters: [
+                {"term" : {"index.language.exact" : "English"}}
+            ]
+        });
+    });
+
     $('#report-view-bar-facet_hc').each(function() {
         $(this).report({
             debug: true,
@@ -289,6 +330,15 @@ jQuery(document).ready(function($) {
     </div>
     <div class="span6">
         <div id="report-view-pie-facet_d3" class="pie"></div>
+    </div>
+</div>
+<hr>
+<div class="row-fluid">
+    <div class="span6">
+        <div id="report-view-horiz-bar-facet_hc" class="bar"></div>
+    </div>
+    <div class="span6">
+        <div id="report-view-horiz-bar-facet_d3" class="bar"></div>
     </div>
 </div>
 <hr>
