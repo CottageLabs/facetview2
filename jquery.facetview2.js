@@ -306,6 +306,7 @@ function getUrlVars() {
                 "interval" : "year, quarter, month, week, day, hour, minute ,second"  // period to use for date histogram
                 "sort" : "asc|desc",                                                // which ordering to use for date histogram
                 "hide_empty_date_bin" : true|false                                  // whether to suppress display of date range with no values
+                "short_display" : <number to display initially>                     // the number of values to show initially (note you should set size=false)
 
                 // admin use only
                 
@@ -337,6 +338,7 @@ function getUrlVars() {
             "default_date_histogram_interval" : "year",
             "default_hide_empty_date_bin" : true,
             "default_date_histogram_sort" : "asc",
+            "default_short_display" : false,
 
 
             ///// search bar configuration /////////////////////////////
@@ -531,6 +533,9 @@ function getUrlVars() {
 
             // called when the share url is shortened/lengthened
             "behaviour_share_url" : setUIShareUrlChange,
+
+            "behaviour_date_histogram_showall" : dateHistogramShowAll,
+            "behaviour_date_histogram_showless" : dateHistogramShowLess,
             
             ///// lifecycle callbacks /////////////////////////////
             
@@ -654,6 +659,7 @@ function getUrlVars() {
                 if (!("hide_empty_date_bin" in facet)) { facet["hide_empty_date_bin"] = provided_options.default_hide_empty_date_bin }
                 if (!("sort" in facet)) { facet["sort"] = provided_options.default_date_histogram_sort }
                 if (!("disabled" in facet)) { facet["disabled"] = false }   // no default setter for this - if you don't specify disabled, they are not disabled
+                if (!("short_display" in facet)) { facet["short_display"] = provided_options.default_short_display }
             }
             
             return provided_options
@@ -962,11 +968,29 @@ function getUrlVars() {
             doSearch();
         }
 
+        ////////// All/Less date histogram values /////////////////////////////
+
+        function clickDHAll(event) {
+            event.preventDefault();
+            var facet = selectFacet(options, $(this).attr('data-facet'));
+            options.behaviour_date_histogram_showall(options, obj, facet);
+        }
+
+        function clickDHLess(event) {
+            event.preventDefault();
+            var facet = selectFacet(options, $(this).attr('data-facet'));
+            options.behaviour_date_histogram_showless(options, obj, facet);
+        }
+
         /////// facet values /////////////////////////////////
         
         function setUIFacetResults(facet) {
             var el = facetElement("#facetview_filter_", facet["field"], obj);
-            el.children().find('.facetview_filtervalue').remove();
+
+            // remove any stuff that is going to be overwritten
+            el.find(".facetview_date_histogram_short", obj).remove();
+            el.find(".facetview_date_histogram_full", obj).remove();
+            el.find('.facetview_filtervalue', obj).remove();
             
             if (!("values" in facet)) {
                 return
@@ -997,6 +1021,10 @@ function getUrlVars() {
             // enable filter removal
             $('.facetview_filterselected', obj).unbind('click', clickClearFilter);
             $('.facetview_filterselected', obj).bind('click', clickClearFilter);
+
+            // enable all/less on date histograms
+            $(".facetview_date_histogram_showless", obj).unbind("click", clickDHLess).bind("click", clickDHLess);
+            $(".facetview_date_histogram_showall", obj).unbind("click", clickDHAll).bind("click", clickDHAll);
         }
         
         /////// selected filters /////////////////////////////////

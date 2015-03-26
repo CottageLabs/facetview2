@@ -358,10 +358,10 @@ function renderDateHistogramFacet(facet, options) {
 
     // full template for the facet - we'll then go on and do some find and replace
     var filterTmpl = '<table id="facetview_filter_{{FILTER_NAME}}" class="facetview_filters table table-bordered table-condensed table-striped" data-href="{{FILTER_EXACT}}"> \
-        <tr><td><a class="facetview_filtershow" title="filter by {{FILTER_DISPLAY}}" \
+        <tbody><tr><td><a class="facetview_filtershow" title="filter by {{FILTER_DISPLAY}}" \
         style="color:#333; font-weight:bold;" href="{{FILTER_EXACT}}"><i class="glyphicon glyphicon-plus"></i> {{FILTER_DISPLAY}} \
         </a> \
-        </td></tr> \
+        </td></tr></tbody> \
         </table>';
 
     // put the name of the field into FILTER_NAME and FILTER_EXACT
@@ -643,12 +643,16 @@ function renderDateHistogramValues(options, facet) {
         values.reverse()
     }
 
+    var full_frag = "<tbody class='facetview_date_histogram_full table-striped-inverted' style='display: none'>";
+    var short_frag = "<tbody class='facetview_date_histogram_short table-striped-inverted'>";
+
     for (var i = 0; i < values.length; i++) {
         var f = values[i];
         if (f) {
             if (f.count === 0 && facet.hide_empty_date_bin) {
                 continue
             }
+
             var next = false;
             if (facet.sort === "asc") {
                 if (i + 1 < values.length) {
@@ -661,11 +665,26 @@ function renderDateHistogramValues(options, facet) {
             }
 
             var append = options.render_date_histogram_result(options, facet, f, next);
-            frag += append
+
+            full_frag += append;
+            if (!facet["short_display"]) {
+                short_frag += append;
+            }
+            else if (facet["short_display"] && i < facet["short_display"]) {
+                short_frag += append;
+            }
         }
     }
 
-    return frag
+    full_frag += '<tr class="facetview_filtervalue" style="display:none;"><td><a href="#" class="facetview_date_histogram_showless" data-facet="' + facet['field'] + '">show less</a></td></tr>';
+    full_frag += "</tbody>";
+
+    if (facet["short_display"] && values.length > facet["short_display"]) {
+        short_frag += '<tr class="facetview_filtervalue" style="display:none;"><td><a href="#" class="facetview_date_histogram_showall" data-facet="' + facet['field'] + '">show all</a></td></tr>';
+    }
+    short_frag += "</tbody>";
+
+    return short_frag + full_frag;
 }
 
 function renderTermsFacetResult(options, facet, result, selected_filters) {
@@ -1278,4 +1297,16 @@ function setUIShareUrlChange(options, context) {
         $(".facetview_shorten_url", context).show();
         $(".facetview_lengthen_url", context).hide();
     }
+}
+
+function dateHistogramShowAll(options, context, facet) {
+    var el = context.find("#facetview_filter_" + safeId(facet.field));
+    el.find(".facetview_date_histogram_short").hide();
+    el.find(".facetview_date_histogram_full").show();
+}
+
+function dateHistogramShowLess(options, context, facet) {
+    var el = context.find("#facetview_filter_" + safeId(facet.field));
+    el.find(".facetview_date_histogram_full").hide();
+    el.find(".facetview_date_histogram_short").show();
 }
