@@ -270,7 +270,7 @@ function getUrlVars() {
             {
                 "field" : "<elasticsearch field>"                                   // field upon which to facet
                 "display" : "<display name>",                                       // display name for the UI
-                "type": "term|range|geo_distance|statistical|date_histogram",       // the kind of facet this will be
+                "type": "terms|range|geo_distance|statistical|date_histogram",      // the kind of facet this will be
                 "open" : true|false,                                                // whether the facet should be open or closed (initially)
                 "hidden" : true|false                                               // whether the facet should be displayed at all (e.g. you may just want the data for a callback)
                 "disabled" : true|false                                             // whether the facet should be acted upon in any way.  This might be useful if you want to enable/disable facets under different circumstances via a callback
@@ -284,6 +284,7 @@ function getUrlVars() {
                 "hide_inactive" : true|false,                                       // whether to hide or just disable the facet if below deactivate threshold
                 "value_function" : <function>,                                      // function to be called on each value before display
                 "controls" : true|false                                             // should the facet sort/size/bool controls be shown?
+                "ignore_empty_string" : true|false                                  // should the terms facet ignore empty strings in display
                 
                 // range facet only
                 
@@ -339,6 +340,7 @@ function getUrlVars() {
             "default_hide_empty_date_bin" : true,
             "default_date_histogram_sort" : "asc",
             "default_short_display" : false,
+            "default_ignore_empty_string" : false,      // because filtering out empty strings is less performant
 
 
             ///// search bar configuration /////////////////////////////
@@ -660,6 +662,7 @@ function getUrlVars() {
                 if (!("sort" in facet)) { facet["sort"] = provided_options.default_date_histogram_sort }
                 if (!("disabled" in facet)) { facet["disabled"] = false }   // no default setter for this - if you don't specify disabled, they are not disabled
                 if (!("short_display" in facet)) { facet["short_display"] = provided_options.default_short_display }
+                if (!("ignore_empty_string" in facet)) { facet["ignore_empty_string"] = provided_options.default_ignore_empty_string }
             }
             
             return provided_options
@@ -1308,7 +1311,19 @@ function getUrlVars() {
                 } else {
                     if (!records) { records = [] }
                     if (size) { // this means you can set the size of a facet to something false (like, false, or 0, and size will be ignored)
-                        facet["values"] = records.slice(0, size)
+                        if (facet.type === "terms" && facet.ignore_empty_string) {
+                            facet["values"] = [];
+                            for (var i = 0; i < records.length; i++) {
+                                if (facet.values.length > size) {
+                                    break;
+                                }
+                                if (records[i].term !== "") {
+                                    facet["values"].push(records[i]);
+                                }
+                            }
+                        } else {
+                            facet["values"] = records.slice(0, size)
+                        }
                     } else {
                         facet["values"] = records
                     }
