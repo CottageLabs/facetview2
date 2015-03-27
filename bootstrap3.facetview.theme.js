@@ -64,7 +64,7 @@ function theFacetview(options) {
     thefacetview += '<div class="facetview_searching" style="display:none"></div>'
 
     // insert the table within which the results actually will go
-    thefacetview += '<table class="table table-striped table-bordered" id="facetview_results"></table>'
+    thefacetview += '<table class="table table-striped table-bordered" id="facetview_results" dir="auto"></table>'
 
     // make space at the bottom for the pager
     thefacetview += '<div class="facetview_metadata"></div>';
@@ -705,8 +705,8 @@ function renderTermsFacetResult(options, facet, result, selected_filters) {
     }
     var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
                 '" data-field="' + facet['field'] + '" data-value="' + escapeHtml(result.term) + '" href="' + escapeHtml(result.term) +
-                '"><span class="facetview_filterchoice_text">' + display + '</span>' +
-                '<span class="facetview_filterchoice_count"> (' + result.count + ')</span></a></td></tr>';
+                '"><span class="facetview_filterchoice_text" dir="auto">' + display + '</span>' +
+                '<span class="facetview_filterchoice_count" dir="ltr"> (' + result.count + ')</span></a></td></tr>';
     return append
 }
 
@@ -721,8 +721,8 @@ function renderRangeFacetResult(options, facet, result, range) {
     var data_from = range.from ? " data-from='" + range.from + "' " : "";
 
     var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
-                '" data-field="' + facet['field'] + '" ' + data_to + data_from + ' href="#"><span class="facetview_filterchoice_text">' + range.display + '</span>' +
-                '<span class="facetview_filterchoice_count"> (' + result.count + ')</span></a></td></tr>';
+                '" data-field="' + facet['field'] + '" ' + data_to + data_from + ' href="#"><span class="facetview_filterchoice_text" dir="auto">' + range.display + '</span>' +
+                '<span class="facetview_filterchoice_count" dir="ltr"> (' + result.count + ')</span></a></td></tr>';
     return append
 }
 
@@ -737,8 +737,8 @@ function renderGeoFacetResult(options, facet, result, range) {
     var data_from = range.from ? " data-from='" + range.from + "' " : "";
 
     var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
-                '" data-field="' + facet['field'] + '" ' + data_to + data_from + ' href="#"><span class="facetview_filterchoice_text">' + range.display + '</span>' +
-                '<span class="facetview_filterchoice_count"> (' + result.count + ')</span></a></td></tr>';
+                '" data-field="' + facet['field'] + '" ' + data_to + data_from + ' href="#"><span class="facetview_filterchoice_text" dir="auto">' + range.display + '</span>' +
+                '<span class="facetview_filterchoice_count" dir="ltr"> (' + result.count + ')</span></a></td></tr>';
     return append
 }
 
@@ -759,8 +759,8 @@ function renderDateHistogramResult(options, facet, result, next) {
     }
 
     var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
-                '" data-field="' + facet['field'] + '" ' + data_to + data_from + ' href="#"><span class="facetview_filterchoice_text">' + escapeHtml(display) + '</span>' +
-                '<span class="facetview_filterchoice_count"> (' + result.count + ')</span></a></td></tr>';
+                '" data-field="' + facet['field'] + '" ' + data_to + data_from + ' href="#"><span class="facetview_filterchoice_text" dir="auto">' + escapeHtml(display) + '</span>' +
+                '<span class="facetview_filterchoice_count" dir="ltr"> (' + result.count + ')</span></a></td></tr>';
     return append
 }
 
