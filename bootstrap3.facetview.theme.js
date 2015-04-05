@@ -961,6 +961,201 @@ function renderActiveTermsFilter(options, facet, field, filter_list) {
      * options.show_filter_logic - whether to include AND/OR along with filters
      * facet.value_function - the value function to be applied to all displayed values
      */
+    var clean = safeId(field);
+    var display = facet.display ? facet.display : facet.field;
+    var logic = facet.logic ? facet.logic : options.default_facet_operator;
+
+    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group'>";
+
+    if (options.show_filter_field) {
+        frag += '<span class="facetview_filterselected_text"><strong>' + display + ':</strong>&nbsp;</span>';
+    }
+
+    for (var i = 0; i < filter_list.length; i++) {
+        var value = filter_list[i];
+        if (facet.value_function) {
+            value = facet.value_function(value)
+        }
+
+        frag += '<span class="facetview_filterselected_text">' + value + '</span>&nbsp;';
+        frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" data-value="' + value + '" alt="remove" title="Remove" href="' + value + '">';
+        frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+        frag += "</a>";
+
+        if (i !== filter_list.length - 1 && options.show_filter_logic) {
+            frag += '<span class="facetview_filterselected_text">&nbsp;<strong>' + logic + '</strong>&nbsp;</span>';
+        }
+    }
+    frag += "</div>";
+
+    return frag
+}
+
+function renderActiveRangeFilter(options, facet, field, value) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * class: facetview_filterselected - anchor tag for any clickable filter selection
+     * class: facetview_clear - anchor tag for any link which will remove the filter (should also provide data-value and data-field)
+     * class: facetview_inactive_link - any link combined with facetview_filterselected which should not execute when clicked
+     *
+     * should (not must) respect the config
+     *
+     * options.show_filter_field - whether to include the name of the field the filter is active on
+     */
+
+    function getRangeForValue(value, facet) {
+        for (var i=0; i < facet.range.length; i=i+1) {
+            var range = facet.range[i];
+
+            // the "to"s match if they both value and range have a "to" and they are the same, or if neither have a "to"
+            var match_to = (value.to && range.to && value.to === range.to.toString()) || (!value.to && !range.to);
+
+            // the "from"s match if they both value and range have a "from" and they are the same, or if neither have a "from"
+            var match_from = (value.from && range.from && value.from === range.from.toString()) || (!value.from && !range.from);
+
+            if (match_to && match_from) {
+                return range
+            }
+        }
+    }
+
+    var clean = safeId(field);
+    var display = facet.display ? facet.display : facet.field;
+
+    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group'>";
+
+    if (options.show_filter_field) {
+        frag += '<span class="facetview_filterselected_text"><strong>' + display + ':</strong>&nbsp;</span>';
+    }
+
+    var range = getRangeForValue(value, facet);
+
+    var data_to = value.to ? " data-to='" + value.to + "' " : "";
+    var data_from = value.from ? " data-from='" + value.from + "' " : "";
+
+    frag += '<span class="facetview_filterselected_text">' + range.display + '</span>&nbsp;';
+    frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" ' + data_to + data_from +
+            ' alt="remove" title="Remove" href="#">';
+    frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+    frag += "</a>";
+
+    frag += "</div>";
+
+    return frag
+}
+
+function renderActiveGeoFilter(options, facet, field, value) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * class: facetview_filterselected - anchor tag for any clickable filter selection
+     * class: facetview_clear - anchor tag for any link which will remove the filter (should also provide data-value and data-field)
+     * class: facetview_inactive_link - any link combined with facetview_filterselected which should not execute when clicked
+     *
+     * should (not must) respect the config
+     *
+     * options.show_filter_field - whether to include the name of the field the filter is active on
+     */
+
+    function getRangeForValue(value, facet) {
+        for (var i=0; i < facet.distance.length; i=i+1) {
+            var range = facet.distance[i];
+
+            // the "to"s match if they both value and range have a "to" and they are the same, or if neither have a "to"
+            var match_to = (value.to && range.to && value.to === range.to.toString()) || (!value.to && !range.to);
+
+            // the "from"s match if they both value and range have a "from" and they are the same, or if neither have a "from"
+            var match_from = (value.from && range.from && value.from === range.from.toString()) || (!value.from && !range.from);
+
+            if (match_to && match_from) {
+                return range
+            }
+        }
+    }
+
+    var clean = safeId(field);
+    var display = facet.display ? facet.display : facet.field;
+
+    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group'>";
+
+    if (options.show_filter_field) {
+        frag += '<span class="facetview_filterselected_text"><strong>' + display + ':</strong>&nbsp;</span>';
+    }
+
+    var range = getRangeForValue(value, facet);
+
+    var data_to = value.to ? " data-to='" + value.to + "' " : "";
+    var data_from = value.from ? " data-from='" + value.from + "' " : "";
+
+    frag += '<span class="facetview_filterselected_text">' + range.display + '</span>&nbsp;';
+    frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" ' + data_to + data_from +
+            ' alt="Remove" title="remove" href="#">';
+    frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+    frag += "</a>";
+
+    frag += "</div>";
+
+    return frag
+}
+
+function renderActiveDateHistogramFilter(options, facet, field, value) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * class: facetview_filterselected - anchor tag for any clickable filter selection
+     * class: facetview_clear - anchor tag for any link which will remove the filter (should also provide data-value and data-field)
+     * class: facetview_inactive_link - any link combined with facetview_filterselected which should not execute when clicked
+     *
+     * should (not must) respect the config
+     *
+     * options.show_filter_field - whether to include the name of the field the filter is active on
+     */
+
+    var clean = safeId(field);
+    var display = facet.display ? facet.display : facet.field;
+
+    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group'>";
+
+    if (options.show_filter_field) {
+        frag += '<span class="facetview_filterselected_text"><strong>' + display + ':</strong>&nbsp;</span>';
+    }
+
+    var data_from = value.from ? " data-from='" + value.from + "' " : "";
+
+    var valdisp = value.from;
+    if (facet.value_function) {
+        valdisp = facet.value_function(valdisp);
+    }
+
+    frag += '<span class="facetview_filterselected_text">' + valdisp + '</span>&nbsp;';
+    frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" ' + data_from +
+            ' alt="remove" title="Remove" href="#">';
+    frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+    frag += "</a>";
+
+    frag += "</div>";
+
+    return frag
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// Alternative active filter renderers which use buttons - deprecated due to usability/ux concerns
+
+function renderActiveTermsFilterButton(options, facet, field, filter_list) {
+    /*****************************************
+     * overrides must provide the following classes and ids
+     *
+     * class: facetview_filterselected - anchor tag for any clickable filter selection
+     * class: facetview_clear - anchor tag for any link which will remove the filter (should also provide data-value and data-field)
+     * class: facetview_inactive_link - any link combined with facetview_filterselected which should not execute when clicked
+     *
+     * should (not must) respect the config
+     *
+     * options.show_filter_field - whether to include the name of the field the filter is active on
+     * options.show_filter_logic - whether to include AND/OR along with filters
+     * facet.value_function - the value function to be applied to all displayed values
+     */
     var clean = safeId(field)
     var display = facet.display ? facet.display : facet.field
     var logic = facet.logic ? facet.logic : options.default_facet_operator
@@ -994,7 +1189,7 @@ function renderActiveTermsFilter(options, facet, field, filter_list) {
     return frag
 }
 
-function renderActiveRangeFilter(options, facet, field, value) {
+function renderActiveRangeFilterButton(options, facet, field, value) {
     /*****************************************
      * overrides must provide the following classes and ids
      *
@@ -1049,7 +1244,7 @@ function renderActiveRangeFilter(options, facet, field, value) {
     return frag
 }
 
-function renderActiveGeoFilter(options, facet, field, value) {
+function renderActiveGeoFilterButton(options, facet, field, value) {
     /*****************************************
      * overrides must provide the following classes and ids
      *
@@ -1104,7 +1299,7 @@ function renderActiveGeoFilter(options, facet, field, value) {
     return frag
 }
 
-function renderActiveDateHistogramFilter(options, facet, field, value) {
+function renderActiveDateHistogramFilterButton(options, facet, field, value) {
     /*****************************************
      * overrides must provide the following classes and ids
      *
@@ -1144,6 +1339,8 @@ function renderActiveDateHistogramFilter(options, facet, field, value) {
 
     return frag
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////
 
 ///// behaviour functions //////////////////////////
 
