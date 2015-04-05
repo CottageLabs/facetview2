@@ -187,16 +187,18 @@ function getFilters(params) {
 
     function termsFilter(facet, filter_list) {
         if (facet.logic === "AND") {
+            var filters = [];
             for (var i=0; i < filter_list.length; i=i+1) {
                 var value = filter_list[i];
                 var tq = {"term" : {}};
                 tq["term"][facet.field] = value;
-                return tq
+                filters.push(tq);
             }
+            return filters;
         } else if (facet.logic === "OR") {
             var tq = {"terms" : {}};
             tq["terms"][facet.field] = filter_list;
-            return tq
+            return [tq];
         }
     }
 
@@ -238,7 +240,7 @@ function getFilters(params) {
                 var filter_list = filter_definition[field];
 
                 if (facet.type === "terms") {
-                    filters.push(termsFilter(facet, filter_list))
+                    filters = filters.concat(termsFilter(facet, filter_list)); // Note this is a concat not a push, unlike the others
                 } else if (facet.type === "range") {
                     filters.push(rangeFilter(facet, filter_list))
                 } else if (facet.type === "geo_distance") {
