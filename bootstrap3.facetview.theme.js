@@ -170,13 +170,13 @@ function searchOptions(options) {
     // share and save link
     if (options.sharesave_link) {
         // style="margin:0 0 21px 5px;"
-        thefacetview += '<div class="form-group"><div class="input-group"><span class="input-group-btn"><button class="btn btn-default facetview_sharesave" title="share or save this search" href="" style="margin-left: 10px"><span class="glyphicon glyphicon-share-alt"></span></button></span></div></div>';
+        thefacetview += '<div class="form-group"><div class="input-group"><span class="input-group-btn"><button class="btn btn-default facetview_sharesave" title="share a link to this search" href="" style="margin-left: 10px"><span class="glyphicon glyphicon-share-alt"></span></button></span></div></div>';
 
         thefacetview += "</div></form>";
 
         thefacetview += '<div class="facetview_sharesavebox alert alert-info" style="display:none;"> \
                 <button type="button" class="facetview_sharesave close">×</button> \
-                <p>Share or save this search:';
+                <p>Share a link to this search:';
 
         // if there is a url_shortener available, render a link
         if (options.url_shortener) {

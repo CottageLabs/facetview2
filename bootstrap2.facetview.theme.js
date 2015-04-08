@@ -103,7 +103,7 @@ function searchOptions(options) {
 
     // share and save link
     if (options.sharesave_link) {
-        thefacetview += '<a class="btn facetview_sharesave" title="share or save this search" style="margin:0 5px 21px 0px;" href="">share <i class="icon icon-share"></i></a>';
+        thefacetview += '<a class="btn facetview_sharesave" title="share a link to this search" style="margin:0 5px 21px 0px;" href="">share <i class="icon icon-share"></i></a>';
     }
 
     // initial button group of search controls
@@ -169,12 +169,12 @@ function searchOptions(options) {
     if (options.sharesave_link) {
         thefacetview += '<div class="facetview_sharesavebox alert alert-info" style="display:none;"> \
             <button type="button" class="facetview_sharesave close">×</button> \
-            <p>Share or save this search:'
+            <p>Share a link to this search';
 
         // if there is a url_shortener available, render a link
         if (options.url_shortener) {
-            thefacetview += " <a href='#' class='facetview_shorten_url'>(shorten url)</a>";
-            thefacetview += " <a href='#' class='facetview_lengthen_url' style='display: none'>(original url)</a>";
+            thefacetview += " <a href='#' class='facetview_shorten_url btn btn-mini' style='margin-left: 30px'><i class='icon-white icon-resize-small'></i> shorten url</a>";
+            thefacetview += " <a href='#' class='facetview_lengthen_url btn btn-mini' style='display: none; margin-left: 30px'><i class='icon-white icon-resize-full'></i> original url</a>";
         }
 
         thefacetview += '</p> \
