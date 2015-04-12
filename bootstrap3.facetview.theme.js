@@ -574,7 +574,7 @@ function renderGeoFacetValues(options, facet) {
 
         var sf = '<tr class="facetview_filtervalue" style="display:none;"><td>'
         sf += "<strong>" + range.display + "</strong> "
-        sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" ' + data_to + data_from + ' href="#"><i class="icon-black icon-remove" style="margin-top:1px;"></i></a>'
+        sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" ' + data_to + data_from + ' href="#"><i class="glyphicon glyphicon-black glyphicon-remove" style="margin-top:1px;"></i></a>'
         sf += "</td></tr>"
         frag += sf
 
@@ -627,7 +627,7 @@ function renderDateHistogramValues(options, facet) {
 
         var sf = '<tr class="facetview_filtervalue" style="display:none;"><td>';
         sf += "<strong>" + display + "</strong> ";
-        sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" '+ data_from + ' href="#"><i class="icon-black icon-remove" style="margin-top:1px;"></i></a>';
+        sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" '+ data_from + ' href="#"><i class="glyphicon glyphicon-black glyphicon-remove" style="margin-top:1px;"></i></a>';
         sf += "</td></tr>";
         frag += sf;
 
@@ -965,7 +965,7 @@ function renderActiveTermsFilter(options, facet, field, filter_list) {
     var display = facet.display ? facet.display : facet.field;
     var logic = facet.logic ? facet.logic : options.default_facet_operator;
 
-    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group'>";
+    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group' style='margin-left: 20px'>";
 
     if (options.show_filter_field) {
         frag += '<span class="facetview_filterselected_text"><strong>' + display + ':</strong>&nbsp;</span>';
@@ -979,7 +979,7 @@ function renderActiveTermsFilter(options, facet, field, filter_list) {
 
         frag += '<span class="facetview_filterselected_text">' + value + '</span>&nbsp;';
         frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" data-value="' + value + '" alt="remove" title="Remove" href="' + value + '">';
-        frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+        frag += '<i class="glyphicon glyphicon-black glyphicon-remove" style="margin-top:1px;"></i>';
         frag += "</a>";
 
         if (i !== filter_list.length - 1 && options.show_filter_logic) {
@@ -1023,7 +1023,7 @@ function renderActiveRangeFilter(options, facet, field, value) {
     var clean = safeId(field);
     var display = facet.display ? facet.display : facet.field;
 
-    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group'>";
+    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group' style='margin-left: 20px'>";
 
     if (options.show_filter_field) {
         frag += '<span class="facetview_filterselected_text"><strong>' + display + ':</strong>&nbsp;</span>';
@@ -1037,7 +1037,7 @@ function renderActiveRangeFilter(options, facet, field, value) {
     frag += '<span class="facetview_filterselected_text">' + range.display + '</span>&nbsp;';
     frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" ' + data_to + data_from +
             ' alt="remove" title="Remove" href="#">';
-    frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+    frag += '<i class="glyphicon glyphicon-black glyphicon-remove" style="margin-top:1px;"></i>';
     frag += "</a>";
 
     frag += "</div>";
@@ -1077,7 +1077,7 @@ function renderActiveGeoFilter(options, facet, field, value) {
     var clean = safeId(field);
     var display = facet.display ? facet.display : facet.field;
 
-    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group'>";
+    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group' style='margin-left: 20px'>";
 
     if (options.show_filter_field) {
         frag += '<span class="facetview_filterselected_text"><strong>' + display + ':</strong>&nbsp;</span>';
@@ -1091,7 +1091,7 @@ function renderActiveGeoFilter(options, facet, field, value) {
     frag += '<span class="facetview_filterselected_text">' + range.display + '</span>&nbsp;';
     frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" ' + data_to + data_from +
             ' alt="Remove" title="remove" href="#">';
-    frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+    frag += '<i class="glyphicon-white glyphicon-remove" style="margin-top:1px;"></i>';
     frag += "</a>";
 
     frag += "</div>";
@@ -1115,7 +1115,7 @@ function renderActiveDateHistogramFilter(options, facet, field, value) {
     var clean = safeId(field);
     var display = facet.display ? facet.display : facet.field;
 
-    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group'>";
+    var frag = "<div id='facetview_filter_group_" + clean + "' class='btn-group' style='margin-left: 20px'>";
 
     if (options.show_filter_field) {
         frag += '<span class="facetview_filterselected_text"><strong>' + display + ':</strong>&nbsp;</span>';
@@ -1131,7 +1131,7 @@ function renderActiveDateHistogramFilter(options, facet, field, value) {
     frag += '<span class="facetview_filterselected_text">' + valdisp + '</span>&nbsp;';
     frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" ' + data_from +
             ' alt="remove" title="Remove" href="#">';
-    frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+    frag += '<i class="glyphicon glyphicon-black glyphicon-remove" style="margin-top:1px;"></i>';
     frag += "</a>";
 
     frag += "</div>";
@@ -1291,7 +1291,7 @@ function renderActiveGeoFilterButton(options, facet, field, value) {
 
     frag += '<button class="facetview_filterselected facetview_clear btn btn-info" data-field="' + field + '" ' + data_to + data_from +
             ' alt="remove" title="remove" href="#">'
-    frag += '<span class="facetview_filterselected_text">' + range.display + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
+    frag += '<span class="facetview_filterselected_text">' + range.display + '</span> <i class="glyphicon glyphicon-white glyphicon-remove" style="margin-top:1px;"></i>'
     frag += "</button>"
 
     frag += "</div>"
@@ -1332,7 +1332,7 @@ function renderActiveDateHistogramFilterButton(options, facet, field, value) {
 
     frag += '<button class="facetview_filterselected facetview_clear btn btn-info" data-field="' + field + '" ' + data_from +
             ' alt="remove" title="remove" href="#">'
-    frag += '<span class="facetview_filterselected_text">' + escapeHtml(valdisp) + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
+    frag += '<span class="facetview_filterselected_text">' + escapeHtml(valdisp) + '</span> <i class="glyphicon glyphicon-white glyphicon-remove" style="margin-top:1px;"></i>'
     frag += "</button>"
 
     frag += "</div>"
@@ -1483,7 +1483,14 @@ function setUISelectedFilters(options, context) {
             // FIXME: statistical facet?
         }
     }
+
     $('#facetview_selectedfilters', context).html(frag);
+
+    if (frag === "") {
+        $('#facetview_selectedfilters', context).hide();
+    } else {
+        $('#facetview_selectedfilters', context).show();
+    }
 }
 
 function setUIShareUrlChange(options, context) {
