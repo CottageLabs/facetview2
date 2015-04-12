@@ -678,14 +678,15 @@ function getUrlVars() {
             
             // set the search order
             // NOTE: that this interface only supports single field ordering
-            sorting = options.sort;
+            var sorting = options.sort;
 
-            for (var i=0; i < sorting.length; i=i+1) {
+            for (var i = 0; i < sorting.length; i++) {
                 var so = sorting[i];
-                for (var field=0; field < so.length; field=field+1) {
-                    var dir = so[field]["order"];
+                var fields = Object.keys(so);
+                for (var j = 0; j < fields.length; j++) {
+                    var dir = so[fields[j]]["order"];
                     options.behaviour_set_order(options, obj, {order: dir});
-                    options.behaviour_set_order_by(options, obj, {orderby: field});
+                    options.behaviour_set_order_by(options, obj, {orderby: fields[j]});
                     break
                 }
                 break
