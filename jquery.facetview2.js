@@ -834,6 +834,7 @@ function getUrlVars() {
         function keyupSearchText(event) {
             event.preventDefault();
             var q = $(this).val();
+            options.from = 0;
             options.q = q;
             doSearch()
         }
@@ -842,6 +843,7 @@ function getUrlVars() {
         function clickSearch() {
             event.preventDefault();
             var q = $(".facetview_freetext", obj).val();
+            options.from = 0;
             options.q = q;
             doSearch()
         }
