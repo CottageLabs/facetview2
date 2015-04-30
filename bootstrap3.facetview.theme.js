@@ -99,26 +99,34 @@ function searchOptions(options) {
      * options.search_button - whether to provide a button to force a search
      */
 
-    var thefacetview = "<form class='form-inline form-padding'>";
-
-    // initial button group of search controls
-    thefacetview += '<div class="form-group"><div class="input-group">\
-        <span class="input-group-btn"><button type="submit" class="btn btn-default facetview_startagain" title="clear all search settings and start again" href=""><span class="glyphicon glyphicon-remove"></span></button></span> \
-        <span class="input-group-btn"><button type="submit" class="btn btn-default facetview_pagesize" title="change result set size" href="#"></button></span>';
-
-    if (options.search_sortby.length > 0) {
-        thefacetview += '<span class="input-group-btn"><button type="submit" class="btn btn-default facetview_order" title="current order descending. Click to change to ascending" \
-            href="desc"><span class="glyphicon glyphicon-arrow-down"></span></button></span>';
+    // share and save link button
+    var sharesave = "";
+    if (options.sharesave_link) {
+        sharesave = '<div class="form-group"> \
+                <button class="btn btn-default facetview_sharesave" title="Share a link to this search" href="" style="margin-left: 10px"> \
+                    <span class="glyphicon glyphicon-share-alt"></span> \
+                </button> \
+            </div>';
     }
-    thefacetview += "</div></div>";
 
-    //style="border-radius:5px; \
-    //        -moz-border-radius:5px; -webkit-border-radius:5px; width:100px; background:#eee; margin:0 5px 21px 0;"
-
-    // selection for search ordering
+    var sortbutton = "";
     if (options.search_sortby.length > 0) {
-        thefacetview += '<div class="form-group"><div class="input-group"><select class="facetview_orderby form-control"> \
-            <option value="">order by ... relevance</option>';
+        sortbutton = '<button type="submit" class="btn btn-default facetview_order" title="Current order descending. Click to change to ascending" href="desc"> \
+                <span class="glyphicon glyphicon-arrow-down"></span> \
+            </button>';
+    }
+
+    var buttons = '<span class="input-group-btn"> \
+            <button type="submit" class="btn btn-default facetview_startagain" title="Clear all search settings and start again" href=""> \
+                <span class="glyphicon glyphicon-remove"></span> \
+            </button> \
+            <button type="submit" class="btn btn-default facetview_pagesize" title="Change result set size" href="#">10</button>' + sortbutton +  ' \
+        </span>';
+
+    var sortby = "";
+    if (options.search_sortby.length > 0) {
+        sortby = '<select class="facetview_orderby form-control"> \
+                <option value="">order by ... relevance</option>';
 
         for (var each = 0; each < options.search_sortby.length; each++) {
             var obj = options.search_sortby[each];
@@ -130,66 +138,63 @@ function searchOptions(options) {
             } else {
                 sortoption = obj['field'];
             }
-            thefacetview += '<option value="' + sortoption + '">' + obj['display'] + '</option>';
+            sortby += '<option value="' + sortoption + '">' + obj['display'] + '</option>';
         }
-        thefacetview += "</select></div></div>";
+        sortby += "</select>";
     }
 
-    // style="border-radius:5px 0px 0px 5px; \
-    //        -moz-border-radius:5px 0px 0px 5px; -webkit-border-radius:5px 0px 0px 5px; width:100px; margin:0 -2px 21px 0; background:#ecf4ff;"
+    var controls_left = '<div class="form-group"> \
+            <div class="input-group">' + buttons + sortby + '</div></div>';
 
-    // select box for fields to search on
-    if ( options.searchbox_fieldselect.length > 0 ) {
-        thefacetview += '<div class="form-group"><div class="input-group"><select class="facetview_searchfield form-control">';
-        thefacetview += '<option value="">search all</option>';
+    var searchfields = "";
+    if (options.searchbox_fieldselect.length > 0) {
+        searchfields = '<div class="form-group"> \
+                <select class="facetview_searchfield form-control"> \
+                    <option value="">Search all</option>';
 
         for (var each = 0; each < options.searchbox_fieldselect.length; each++) {
             var obj = options.searchbox_fieldselect[each];
-            thefacetview += '<option value="' + obj['field'] + '">' + obj['display'] + '</option>';
+            searchfields += '<option value="' + obj['field'] + '">' + obj['display'] + '</option>';
         }
-        thefacetview += '</select></div>';
+        searchfields += '</select></div>';
     }
 
-    // text search box
-    var corners = "border-radius:0px 5px 5px 0px; -moz-border-radius:0px 5px 5px 0px; -webkit-border-radius:0px 5px 5px 0px;"
+    var searchbutton = "";
     if (options.search_button) {
-        corners = "border-radius:0px 0px 0px 0px; -moz-border-radius:0px 0px 0px 0px; -webkit-border-radius:0px 0px 0px 0px;"
+        searchbutton = "<span class='input-group-btn'> \
+                <button class='btn btn-info facetview_force_search'> \
+                    <span class='glyphicon glyphicon-white glyphicon-search'></span> \
+                </button> \
+            </span>";
     }
-    // style="display:inline-block; margin:0 0 21px 0; background:#ecf4ff; ' + corners + '"
 
-    thefacetview += '<div class="form-group"><div class="input-group"><input type="text" class="facetview_freetext form-control" name="q" \
-        value="" placeholder="search term" /></div>';
+    var searchbox = '<div class="form-group"> \
+            <div class="input-group"> \
+                <input type="text" class="facetview_freetext form-control" name="q" value="" placeholder="Enter search" />';
+    searchbox += searchbutton + "</div></div>";
 
-    // search button
-    if (options.search_button) {
-        // style='margin:0 0 21px 0px; border-radius:0px 5px 5px 0px; \
-        //    -moz-border-radius:0px 5px 5px 0px; -webkit-border-radius:0px 5px 5px 0px;'
-        thefacetview += "<div class='form-group'><div class='input-group'><span class='input-group-btn'><button class='btn btn-info facetview_force_search'><span class='glyphicon glyphicon-white glyphicon-search'></span></button></span></div></div>"
-    }
+    var searchOptions = '<form class="form-inline">' + sharesave + controls_left + searchfields + searchbox + "</form>";
 
     // share and save link
+    var sharebox = "";
     if (options.sharesave_link) {
-        // style="margin:0 0 21px 5px;"
-        thefacetview += '<div class="form-group"><div class="input-group"><span class="input-group-btn"><button class="btn btn-default facetview_sharesave" title="share a link to this search" href="" style="margin-left: 10px"><span class="glyphicon glyphicon-share-alt"></span></button></span></div></div>';
 
-        thefacetview += "</div></form>";
-
-        thefacetview += '<div class="facetview_sharesavebox alert alert-info" style="display:none;"> \
+        sharebox = '<div class="facetview_sharesavebox alert alert-info" style="display:none;"> \
                 <button type="button" class="facetview_sharesave close">×</button> \
                 <p>Share a link to this search:';
 
         // if there is a url_shortener available, render a link
         if (options.url_shortener) {
-            thefacetview += " <a href='#' class='facetview_shorten_url'>(shorten url)</a>";
-            thefacetview += " <a href='#' class='facetview_lengthen_url' style='display: none'>(original url)</a>";
+            sharebox += " <a href='#' class='facetview_shorten_url'>(shorten url)</a>";
+            sharebox += " <a href='#' class='facetview_lengthen_url' style='display: none'>(original url)</a>";
         }
 
-        thefacetview += '</p> \
+        sharebox += '</p> \
                 <textarea class="facetview_sharesaveurl" style="width:100%">' + shareableUrl(options) + '</textarea> \
                 </div>';
     }
 
-    return thefacetview
+    return searchOptions + sharebox;
 }
 
 function facetList(options) {
