@@ -266,15 +266,17 @@ function renderTermsFacet(facet, options) {
         </a>';
 
     if (facet.controls) {
-        filterTmpl += '<span class="facetview_filteroptions">\
+        filterTmpl += '<div class="facetview_filteroptions">\
             <form class="form-inline">\
                 <div class="input-group">\
-                    <span class="input-group-btn"><button class="btn btn-default btn-sm facetview_morefacetvals" id="facetview_facetvals_{{FILTER_NAME}}" title="filter list size" href="{{FILTER_EXACT}}">0</button></span>\
-                    <span class="input-group-btn"><button class="btn btn-default btn-sm facetview_sort" id="facetview_sort_{{FILTER_NAME}}" title="filter value order" href="{{FILTER_EXACT}}"></button></span>\
-                    <span class="input-group-btn"><button class="btn btn-default btn-sm facetview_or" id="facetview_or_{{FILTER_NAME}}" href="{{FILTER_EXACT}}">OR</button></span>\
+                    <span class="input-group-btn">\
+                        <button class="btn btn-default btn-sm facetview_morefacetvals" id="facetview_facetvals_{{FILTER_NAME}}" title="Filter list size" href="{{FILTER_EXACT}}">0</button> \
+                        <button class="btn btn-default btn-sm facetview_sort" id="facetview_sort_{{FILTER_NAME}}" title="Filter value order" href="{{FILTER_EXACT}}"></button> \
+                        <button class="btn btn-default btn-sm facetview_or" id="facetview_or_{{FILTER_NAME}}" href="{{FILTER_EXACT}}">OR</button> \
+                    </span>\
                 </div>\
             </form>\
-        </span>';
+        </div>';
     }
 
     filterTmpl += '</td></tr> \
