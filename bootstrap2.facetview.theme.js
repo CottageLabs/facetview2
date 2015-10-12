@@ -253,6 +253,11 @@ function renderTermsFacet(facet, options) {
         style="color:#333; font-weight:bold;" href="{{FILTER_EXACT}}"><i class="icon-plus"></i> {{FILTER_DISPLAY}} \
         </a>';
 
+    if (facet.tooltip) {
+        filterTmpl += '<div class="facetview_tooltip" style="display:none"><a href="#" class="facetview_tooltip_more" data-field="{{FILTER_NAME}}">learn more</a></div>';
+        filterTmpl += '<div class="facetview_tooltip_value" style="display:none">' + facet.tooltip + '<br><a href="#" class="facetview_tooltip_less" data-field="{{FILTER_NAME}}">less</a></div>';
+    }
+
     if (facet.controls) {
         filterTmpl += '<div class="btn-group facetview_filteroptions" style="display:none; margin-top:5px;"> \
             <a class="btn btn-small facetview_morefacetvals" id="facetview_facetvals_{{FILTER_NAME}}" title="filter list size" href="{{FILTER_EXACT}}">0</a> \
@@ -1362,17 +1367,21 @@ function setFacetVisibility(options, context, facet, visible) {
 // called when a request to open or close the facet is received
 // this should move the facet to the state dictated by facet.open
 function setFacetOpenness(options, context, facet) {
-    var el = context.find("#facetview_filter_" + safeId(facet.field))
+    var el = context.find("#facetview_filter_" + safeId(facet.field));
     var open = facet["open"]
     if (open) {
-        el.find(".facetview_filtershow").find("i").removeClass("icon-plus")
-        el.find(".facetview_filtershow").find("i").addClass("icon-minus")
-        el.find(".facetview_filteroptions").show()
+        el.find(".facetview_filtershow").find("i").removeClass("icon-plus");
+        el.find(".facetview_filtershow").find("i").addClass("icon-minus");
+        el.find(".facetview_tooltip").show();
+        el.find(".facetview_tooltip_value").hide();
+        el.find(".facetview_filteroptions").show();
         el.find(".facetview_filtervalue").show()
     } else {
-        el.find(".facetview_filtershow").find("i").removeClass("icon-minus")
-        el.find(".facetview_filtershow").find("i").addClass("icon-plus")
-        el.find(".facetview_filteroptions").hide()
+        el.find(".facetview_filtershow").find("i").removeClass("icon-minus");
+        el.find(".facetview_filtershow").find("i").addClass("icon-plus");
+        el.find(".facetview_tooltip").hide();
+        el.find(".facetview_tooltip_value").hide();
+        el.find(".facetview_filteroptions").hide();
         el.find(".facetview_filtervalue").hide()
     }
 }
