@@ -254,7 +254,8 @@ function renderTermsFacet(facet, options) {
         </a>';
 
     if (facet.tooltip) {
-        filterTmpl += '<div class="facetview_tooltip" style="display:none"><a href="#" class="facetview_tooltip_more" data-field="{{FILTER_NAME}}">learn more</a></div>';
+        var linktext = facet.tooltip_text ? facet.tooltip_text : "learn more";
+        filterTmpl += '<div class="facetview_tooltip" style="display:none"><a href="#" class="facetview_tooltip_more" data-field="{{FILTER_NAME}}">' + linktext + '</a></div>';
         filterTmpl += '<div class="facetview_tooltip_value" style="display:none">' + facet.tooltip + '<br><a href="#" class="facetview_tooltip_less" data-field="{{FILTER_NAME}}">less</a></div>';
     }
 
