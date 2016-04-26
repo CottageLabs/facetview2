@@ -1,4 +1,7 @@
 function escapeHtml(unsafe) {
+    if (unsafe === undefined) {
+        return "undefined";
+    }
     if (typeof unsafe.replace !== "function") {
         return unsafe
     }
