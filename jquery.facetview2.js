@@ -274,9 +274,7 @@ function getUrlVars() {
                 "open" : true|false,                                                // whether the facet should be open or closed (initially)
                 "hidden" : true|false                                               // whether the facet should be displayed at all (e.g. you may just want the data for a callback)
                 "disabled" : true|false                                             // whether the facet should be acted upon in any way.  This might be useful if you want to enable/disable facets under different circumstances via a callback
-                "tooltip" : "<html to be displayed under the facet's tool tip>"     // if present the facet will present a link with the tooltip_text which would give the user some text or other functionality
-                "tooltip_text" : "<text to use to open the tooltip>",               // sets the text of the tooltip link
-
+                
                 // terms facet only
                 
                 "size" : <num>,                                                     // how many terms should the facet limit to
@@ -343,8 +341,6 @@ function getUrlVars() {
             "default_date_histogram_sort" : "asc",
             "default_short_display" : false,
             "default_ignore_empty_string" : false,      // because filtering out empty strings is less performant
-            "default_tooltip" : false,
-            "default_tooltip_text" : "learn more",
 
 
             ///// search bar configuration /////////////////////////////
@@ -667,8 +663,6 @@ function getUrlVars() {
                 if (!("disabled" in facet)) { facet["disabled"] = false }   // no default setter for this - if you don't specify disabled, they are not disabled
                 if (!("short_display" in facet)) { facet["short_display"] = provided_options.default_short_display }
                 if (!("ignore_empty_string" in facet)) { facet["ignore_empty_string"] = provided_options.default_ignore_empty_string }
-                if (!("tooltip" in facet)) { facet["tooltip"] = provided_options.default_tooltip }
-                if (!("tooltip_text" in facet)) { facet["tooltip_text"] = provided_options.default_tooltip_text }
             }
             
             return provided_options
@@ -1037,10 +1031,6 @@ function getUrlVars() {
             // enable all/less on date histograms
             $(".facetview_date_histogram_showless", obj).unbind("click", clickDHLess).bind("click", clickDHLess);
             $(".facetview_date_histogram_showall", obj).unbind("click", clickDHAll).bind("click", clickDHAll);
-
-            // bind the tooltips
-            $(".facetview_tooltip_more").unbind("click", clickTooltipMore).bind("click", clickTooltipMore);
-            $(".facetview_tooltip_less").unbind("click", clickTooltipLess).bind("click", clickTooltipLess);
         }
         
         /////// selected filters /////////////////////////////////
@@ -1219,24 +1209,6 @@ function getUrlVars() {
 
                 options.behaviour_facet_visibility(options, obj, facet, visible)
             });
-        }
-
-        // select the facet tooltip
-        function clickTooltipMore(event) {
-            event.preventDefault();
-            var field = $(this).attr("data-field");
-            var el = facetElement("#facetview_filter_", field, obj);
-            el.find(".facetview_tooltip").hide();
-            el.find(".facetview_tooltip_value").show();
-        }
-
-        // select the facet tooltip
-        function clickTooltipLess(event) {
-            event.preventDefault();
-            var field = $(this).attr("data-field");
-            var el = facetElement("#facetview_filter_", field, obj);
-            el.find(".facetview_tooltip_value").hide();
-            el.find(".facetview_tooltip").show();
         }
         
         /**************************************************************
