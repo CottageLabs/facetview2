@@ -80,7 +80,7 @@ if (!Array.prototype.indexOf) {
 })(jQuery);
 
 function safeId(s) {
-    return s.replace(/\./gi,'_').replace(/\:/gi,'_')
+    return s.replace(/\./gi,'_').replace(/\:/gi,'_').replace(/@/, '_');
 }
 
 // get the right facet element from the page
