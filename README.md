@@ -1,4 +1,4 @@
-#FacetView2
+# FacetView2
 
 a pure javascript frontend for ElasticSearch search indices.
 
