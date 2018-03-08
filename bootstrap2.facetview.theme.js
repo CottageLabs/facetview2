@@ -119,7 +119,7 @@ function searchOptions(options) {
     // initial button group of search controls
     thefacetview += '<div class="btn-group" style="display:inline-block; margin-right:5px;"> \
         <a class="btn btn-small facetview_startagain" title="clear all search settings and start again" href=""><i class="icon-remove"></i></a> \
-        <a class="btn btn-small facetview_pagesize" title="change result set size" href="#"></a>';
+        <a class="btn btn-small facetview_pagesize" title="click to change filter list size" href="#"></a>';
 
     if (options.search_sortby.length > 0) {
         thefacetview += '<a class="btn btn-small facetview_order" title="current order descending. Click to change to ascending" \
@@ -131,7 +131,7 @@ function searchOptions(options) {
     if (options.search_sortby.length > 0) {
         thefacetview += '<select class="facetview_orderby" style="border-radius:5px; \
             -moz-border-radius:5px; -webkit-border-radius:5px; width:100px; background:#eee; margin:0 5px 21px 0;"> \
-            <option value="">order by ... relevance</option>';
+            <option value="">order by ... result weight</option>';
 
         for (var each = 0; each < options.search_sortby.length; each++) {
             var obj = options.search_sortby[each];
@@ -263,17 +263,11 @@ function renderTermsFacet(facet, options) {
         style="color:#333; font-weight:bold;" href="{{FILTER_EXACT}}"><i class="icon-plus"></i> {{FILTER_DISPLAY}} \
         </a>';
 
-    if (facet.tooltip) {
-        var linktext = facet.tooltip_text ? facet.tooltip_text : "learn more";
-        filterTmpl += '<div class="facetview_tooltip" style="display:none"><a href="#" class="facetview_tooltip_more" data-field="{{FILTER_NAME}}">' + linktext + '</a></div>';
-        filterTmpl += '<div class="facetview_tooltip_value" style="display:none">' + facet.tooltip + '<br><a href="#" class="facetview_tooltip_less" data-field="{{FILTER_NAME}}">less</a></div>';
-    }
-
     if (facet.controls) {
         filterTmpl += '<div class="btn-group facetview_filteroptions" style="display:none; margin-top:5px;"> \
             <a class="btn btn-small facetview_morefacetvals" id="facetview_facetvals_{{FILTER_NAME}}" title="filter list size" href="{{FILTER_EXACT}}">0</a> \
-            <a class="btn btn-small facetview_sort" id="facetview_sort_{{FILTER_NAME}}" title="filter value order" href="{{FILTER_EXACT}}"></a> \
-            <a class="btn btn-small facetview_or" id="facetview_or_{{FILTER_NAME}}" href="{{FILTER_EXACT}}">OR</a> \
+            <a class="btn btn-small facetview_sort" id="facetview_sort_{{FILTER_NAME}}" title="click to change filter list order (count or alpha)" href="{{FILTER_EXACT}}"></a> \
+            <a class="btn btn-small facetview_or" id="facetview_or_{{FILTER_NAME}}" title="toggle filter between \'AND\'/\'OR\'" href="{{FILTER_EXACT}}">OR</a> \
         </div>';
     }
 
@@ -410,7 +404,7 @@ function renderTermsFacetValues(options, facet) {
                 }
                 var sf = '<tr class="facetview_filtervalue" style="display:none;"><td>'
                 sf += "<strong>" + value + "</strong> "
-                sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" data-value="' + escapeHtml(value) + '" href="' + escapeHtml(value) + '"><i class="icon-black icon-remove" style="margin-top:1px;"></i></a>'
+                sf += '<a class="facetview_filterselected facetview_clear" data-field="' + facet.field + '" data-value="' + escapeHtml(value) + '" href="' + escapeHtml(value) + '"><i title="Remove" class="icon-black icon-remove" style="margin-top:1px;"></i></a>'
                 sf += "</td></tr>"
                 frag += sf
             }
@@ -984,7 +978,7 @@ function renderActiveTermsFilter(options, facet, field, filter_list) {
 
         frag += '<span class="facetview_filterselected_text">' + value + '</span>&nbsp;';
         frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" data-value="' + value + '" alt="remove" title="Remove" href="' + value + '">';
-        frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+        frag += '<i class="icon-black icon-remove" style="margin-top:1px;"></i>';
         frag += "</a>";
 
         if (i !== filter_list.length - 1 && options.show_filter_logic) {
@@ -1042,7 +1036,7 @@ function renderActiveRangeFilter(options, facet, field, value) {
     frag += '<span class="facetview_filterselected_text">' + range.display + '</span>&nbsp;';
     frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" ' + data_to + data_from +
             ' alt="remove" title="Remove" href="#">';
-    frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+    frag += '<i class="icon-black icon-remove" style="margin-top:1px;"></i>';
     frag += "</a>";
 
     frag += "</div>";
@@ -1096,7 +1090,7 @@ function renderActiveGeoFilter(options, facet, field, value) {
     frag += '<span class="facetview_filterselected_text">' + range.display + '</span>&nbsp;';
     frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" ' + data_to + data_from +
             ' alt="Remove" title="remove" href="#">';
-    frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+    frag += '<i class="icon-black icon-remove" style="margin-top:1px;"></i>';
     frag += "</a>";
 
     frag += "</div>";
@@ -1136,7 +1130,7 @@ function renderActiveDateHistogramFilter(options, facet, field, value) {
     frag += '<span class="facetview_filterselected_text">' + valdisp + '</span>&nbsp;';
     frag += '<a class="facetview_filterselected facetview_clear" data-field="' + field + '" ' + data_from +
             ' alt="remove" title="Remove" href="#">';
-    frag += '<i class="icon-white icon-remove" style="margin-top:1px;"></i>';
+    frag += '<i class="icon-black icon-remove" style="margin-top:1px;"></i>';
     frag += "</a>";
 
     frag += "</div>";
@@ -1180,7 +1174,7 @@ function renderActiveTermsFilterButton(options, facet, field, filter_list) {
         }
 
         frag += '<a class="facetview_filterselected facetview_clear btn btn-info" data-field="' + field + '" data-value="' + escapeHtml(value) + '" alt="remove" title="remove" href="' + escapeHtml(value) + '">'
-        frag += '<span class="facetview_filterselected_text">' + escapeHtml(value) + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
+        frag += '<span class="facetview_filterselected_text">' + escapeHtml(value) + '</span> <i class="icon-black icon-remove" style="margin-top:1px;"></i>'
         frag += "</a>"
 
         if (i !== filter_list.length - 1 && options.show_filter_logic) {
@@ -1241,7 +1235,7 @@ function renderActiveRangeFilterButton(options, facet, field, value) {
 
     frag += '<a class="facetview_filterselected facetview_clear btn btn-info" data-field="' + field + '" ' + data_to + data_from +
             ' alt="remove" title="remove" href="#">'
-    frag += '<span class="facetview_filterselected_text">' + range.display + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
+    frag += '<span class="facetview_filterselected_text">' + range.display + '</span> <i class="icon-black icon-remove" style="margin-top:1px;"></i>'
     frag += "</a>"
 
     frag += "</div>"
@@ -1296,7 +1290,7 @@ function renderActiveGeoFilterButton(options, facet, field, value) {
 
     frag += '<a class="facetview_filterselected facetview_clear btn btn-info" data-field="' + field + '" ' + data_to + data_from +
             ' alt="remove" title="remove" href="#">'
-    frag += '<span class="facetview_filterselected_text">' + range.display + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
+    frag += '<span class="facetview_filterselected_text">' + range.display + '</span> <i class="icon-black icon-remove" style="margin-top:1px;"></i>'
     frag += "</a>"
 
     frag += "</div>"
@@ -1337,7 +1331,7 @@ function renderActiveDateHistogramFilterButton(options, facet, field, value) {
 
     frag += '<a class="facetview_filterselected facetview_clear btn btn-info" data-field="' + field + '" ' + data_from +
             ' alt="remove" title="remove" href="#">'
-    frag += '<span class="facetview_filterselected_text">' + escapeHtml(valdisp) + '</span> <i class="icon-white icon-remove" style="margin-top:1px;"></i>'
+    frag += '<span class="facetview_filterselected_text">' + escapeHtml(valdisp) + '</span> <i class="icon-black icon-remove" style="margin-top:1px;"></i>'
     frag += "</a>"
 
     frag += "</div>"
@@ -1378,21 +1372,17 @@ function setFacetVisibility(options, context, facet, visible) {
 // called when a request to open or close the facet is received
 // this should move the facet to the state dictated by facet.open
 function setFacetOpenness(options, context, facet) {
-    var el = context.find("#facetview_filter_" + safeId(facet.field));
+    var el = context.find("#facetview_filter_" + safeId(facet.field))
     var open = facet["open"]
     if (open) {
-        el.find(".facetview_filtershow").find("i").removeClass("icon-plus");
-        el.find(".facetview_filtershow").find("i").addClass("icon-minus");
-        el.find(".facetview_tooltip").show();
-        el.find(".facetview_tooltip_value").hide();
-        el.find(".facetview_filteroptions").show();
+        el.find(".facetview_filtershow").find("i").removeClass("icon-plus")
+        el.find(".facetview_filtershow").find("i").addClass("icon-minus")
+        el.find(".facetview_filteroptions").show()
         el.find(".facetview_filtervalue").show()
     } else {
-        el.find(".facetview_filtershow").find("i").removeClass("icon-minus");
-        el.find(".facetview_filtershow").find("i").addClass("icon-plus");
-        el.find(".facetview_tooltip").hide();
-        el.find(".facetview_tooltip_value").hide();
-        el.find(".facetview_filteroptions").hide();
+        el.find(".facetview_filtershow").find("i").removeClass("icon-minus")
+        el.find(".facetview_filtershow").find("i").addClass("icon-plus")
+        el.find(".facetview_filteroptions").hide()
         el.find(".facetview_filtervalue").hide()
     }
 }
